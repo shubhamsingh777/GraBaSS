@@ -1,0 +1,10 @@
+# build results
+build/*
+
+# input/test data
+*.input
+
+# tmp files
+.lock-*
+.waf-*
+
