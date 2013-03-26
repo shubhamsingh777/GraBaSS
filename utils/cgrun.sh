@@ -44,7 +44,7 @@ echo
 echo "====== START ======"
 pidstore=/tmp/su.$$
 cgexec -g $clist:$name --sticky su -c "cd $dir && $command 3>&- & echo \$! 1>&3" $targetuser 3>$pidstore
-child=$(cat $pidstore)
+child=$(expr $(cat $pidstore) + 1)
 trap "kill $child" INT
 anywait $child
 rm -f $pidstore
