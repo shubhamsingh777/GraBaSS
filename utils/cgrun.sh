@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 # config
 name="foo"
@@ -7,7 +7,11 @@ name="foo"
 clist="blkio,cpuset"
 command="$@"
 dir=$(pwd)
-targetuser=$(logname)
+if logname &> /dev/null ; then
+	targetuser=$(logname)
+else
+	targetuser=$SUDO_USER
+fi
 
 # colors
 RED=$(tput setaf 1)
