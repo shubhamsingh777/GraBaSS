@@ -136,8 +136,8 @@ int main(/*int argc, char **argv*/) {
 			xMax = max(xMax, helper2.xMax);
 			refs.insert(refs.end(), helper2.refs.begin(), helper2.refs.end()); // no splice because of incompatible allocators
 
-			// store (and assert)
-			assert(graph->add(refs) == i);
+			// store
+			graph->add(refs);
 			edgeCount += refs.size();
 
 			// log
