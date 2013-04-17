@@ -39,7 +39,7 @@ class TBBEdgeHelper {
 		void operator()(const tbb::blocked_range<size_t>& range) {
 			for (size_t i = range.begin(); i != range.end(); ++i) {
 				auto d2 = (*data)[i];
-				double x = D2Ops<double, double>::Pearson.calc(d1, d2);
+				double x = D2Ops<double, double>::Pearson::calc(d1, d2);
 				xMax = max(xMax, x);
 				if (x >= threshold) {
 					refs.push_back(i);
@@ -108,15 +108,15 @@ int main(/*int argc, char **argv*/) {
 		cout << "done (" << pr.dims.size() << " columns, " << pr.nRows << " rows)" << endl;
 
 		typedef D1Ops<double, double> ops1;
-		ops1::Exp.calcAndStoreVector(pr.dims);
-		ops1::Var.calcAndStoreVector(pr.dims);
-		ops1::StdDev.calcAndStoreVector(pr.dims);
+		ops1::Exp::calcAndStoreVector(pr.dims);
+		ops1::Var::calcAndStoreVector(pr.dims);
+		ops1::StdDev::calcAndStoreVector(pr.dims);
 
 		cout << "Build initial graph: " << flush;
 		shared_ptr<DBFile> graphStorage(new DBFile("graph.db"));
 		Graph graph(graphStorage, "phase0");
 		double threshold = 0.4;
-		auto op2 = D2Ops<double, double>::Pearson;
+		typedef D2Ops<double, double>::Pearson op2;
 		long edgeCount = 0;
 		double xMax = numeric_limits<double>::lowest();
 		for (long i = 0; i < static_cast<long>(pr.dims.size()); i++) {
