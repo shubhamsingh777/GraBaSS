@@ -102,6 +102,7 @@ int main(/*int argc, char **argv*/) {
 	{
 		cout << "Open DB: " << flush;
 		shared_ptr<DBFile> db(new DBFile("columns.db"));
+		shared_ptr<DBFile> graphStorage(new DBFile("graph.db"));
 		cout << "done" << endl;
 
 		cout << "Parse: " << flush;
@@ -114,7 +115,6 @@ int main(/*int argc, char **argv*/) {
 		ops1::StdDev::calcAndStoreVector(pr.dims);
 
 		cout << "Build initial graph: " << flush;
-		shared_ptr<DBFile> graphStorage(new DBFile("graph.db"));
 		shared_ptr<Graph> graph(new Graph(graphStorage, "phase0"));
 		double threshold = 0.4;
 		typedef D2Ops<double, double>::Pearson op2;
