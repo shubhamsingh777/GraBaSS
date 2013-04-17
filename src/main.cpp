@@ -14,6 +14,7 @@
 #include "parser.hpp"
 #include "d1ops.hpp"
 #include "d2ops.hpp"
+#include "clusterer.hpp"
 
 using namespace std;
 
@@ -62,7 +63,7 @@ class TBBSearchHelper {
 	public:
 		list<double> refs;
 
-		TBBSearchHelper(long _id, Graph* _graph) :
+		TBBSearchHelper(long _id, shared_ptr<Graph> _graph) :
 			refs(),
 			id(_id),
 			graph(_graph) {}
@@ -89,7 +90,7 @@ class TBBSearchHelper {
 
 	private:
 		long id;
-		Graph* graph;
+		shared_ptr<Graph> graph;
 };
 
 int main(/*int argc, char **argv*/) {
@@ -114,7 +115,7 @@ int main(/*int argc, char **argv*/) {
 
 		cout << "Build initial graph: " << flush;
 		shared_ptr<DBFile> graphStorage(new DBFile("graph.db"));
-		Graph graph(graphStorage, "phase0");
+		shared_ptr<Graph> graph(new Graph(graphStorage, "phase0"));
 		double threshold = 0.4;
 		typedef D2Ops<double, double>::Pearson op2;
 		long edgeCount = 0;
@@ -123,7 +124,7 @@ int main(/*int argc, char **argv*/) {
 			list<long> refs;
 
 			// reverse search existing vertices
-			TBBSearchHelper helper1(i, &graph);
+			TBBSearchHelper helper1(i, graph);
 			parallel_reduce(tbb::blocked_range<size_t>(0, i), helper1);
 			refs.insert(refs.end(), helper1.refs.begin(), helper1.refs.end()); // no splice because of incompatible allocators
 
@@ -136,7 +137,7 @@ int main(/*int argc, char **argv*/) {
 			refs.insert(refs.end(), helper2.refs.begin(), helper2.refs.end()); // no splice because of incompatible allocators
 
 			// store (and assert)
-			assert(graph.add(refs) == i);
+			assert(graph->add(refs) == i);
 			edgeCount += refs.size();
 
 			// log
@@ -147,6 +148,10 @@ int main(/*int argc, char **argv*/) {
 			}
 		}
 		cout << "done (" << (edgeCount / 2) << " edges, max="<< xMax << ")" << endl;
+
+		// graph transformation
+		shared_ptr<Graph> sortedGraph(new Graph(graphStorage, "phase5"));
+		sortGraph(graph, sortedGraph);
 
 		cout << "Cleanup and Sync: " << flush;
 		// end of block => free dims and db

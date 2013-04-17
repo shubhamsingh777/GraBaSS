@@ -29,6 +29,7 @@ def build(bld):
 			'tbb'],
 		source = [
 			'src/dbfile.cpp',
+			'src/clusterer.cpp',
 			'src/graph.cpp',
 			'src/main.cpp',
 			'src/parser.cpp',
