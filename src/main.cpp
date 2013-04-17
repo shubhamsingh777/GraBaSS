@@ -126,35 +126,14 @@ int main(/*int argc, char **argv*/) {
 			TBBSearchHelper helper1(i, &graph);
 			parallel_reduce(tbb::blocked_range<size_t>(0, i), helper1);
 			refs.insert(refs.end(), helper1.refs.begin(), helper1.refs.end()); // no splice because of incompatible allocators
-			/*
-			for (long j = 0; j < i; j++) {
-				list<long> reverse = graph.get(j);
-				for (auto r : reverse) {
-					if (r == i) {
-						refs.push_back(j);
-					}
-				}
-			}
-			*/
 
-			// do not add self reference
+			// do not add self reference (=i)
 
 			// test edges too non exisiting vertices
 			TBBEdgeHelper helper2(pr.dims[i], &pr.dims, threshold);
 			parallel_reduce(tbb::blocked_range<size_t>(i + 1, pr.dims.size()), helper2);
 			xMax = max(xMax, helper2.xMax);
 			refs.insert(refs.end(), helper2.refs.begin(), helper2.refs.end()); // no splice because of incompatible allocators
-			/*
-			auto d1 = pr.dims[i];
-			for (long j = i + 1; j < static_cast<long>(pr.dims.size()); j++) {
-				auto d2 = pr.dims[j];
-				double x = D2Ops<double, double>::Pearson.calc(d1, d2);
-				xMax = max(xMax, x);
-				if (x >= threshold) {
-					refs.push_back(j);
-				}
-			}
-			*/
 
 			// store (and assert)
 			assert(graph.add(refs) == i);
