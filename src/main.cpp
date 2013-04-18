@@ -3,6 +3,7 @@
 #include <iostream>
 #include <limits>
 #include <memory>
+#include <ostream>
 
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_reduce.h>
@@ -100,9 +101,11 @@ int main(/*int argc, char **argv*/) {
 	cout << "done" << endl;
 
 	{
-		cout << "Open DB: " << flush;
+		cout << "Open DB and output file: " << flush;
 		shared_ptr<DBFile> db(new DBFile("columns.db"));
 		shared_ptr<DBFile> graphStorage(new DBFile("graph.db"));
+		ofstream outfile;
+		outfile.open("cluster.txt");
 		cout << "done" << endl;
 
 		cout << "Parse: " << flush;
@@ -152,6 +155,25 @@ int main(/*int argc, char **argv*/) {
 		// graph transformation
 		shared_ptr<Graph> sortedGraph(new Graph(graphStorage, "phase5"));
 		sortGraph(graph, sortedGraph);
+
+		// run clustering
+		list<set<long>> clusters = bronKerboschDegeneracy(sortedGraph);
+
+		// ok, so lets write the results
+		cout << "Write result: " << flush;
+		for (auto cluster : clusters) {
+			bool first = true;
+			for (auto dim : cluster) {
+				if (first) {
+					first = false;
+				} else {
+					outfile << ",";
+				}
+				outfile << dim;
+			}
+			outfile << endl;
+		}
+		cout << "done" << endl;
 
 		cout << "Cleanup and Sync: " << flush;
 		// end of block => free dims and db

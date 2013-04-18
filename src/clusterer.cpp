@@ -90,11 +90,98 @@ void sortGraph(shared_ptr<Graph> input, shared_ptr<Graph> output) {
 			neighborsNew.push_back(idMap[neighbor]);
 		}
 
+		// sort neighbors
+		neighborsNew.sort();
+
 		// store new neighbors with new id
 		output->add(neighborsNew);
 	}
 
 	// done
-	cout << "done (d=" << d << ")" << endl;
+	cout << "done (maxNeighbors=" << maxNeighbors << ", d=" << d << ")" << endl;
+}
+
+list<set<long>> bronKerboschPivot(set<long> p, set<long> r, set<long> x, shared_ptr<Graph> data) {
+	list<set<long>> result;
+	set<long> all;
+	set_union(p.begin(), p.end(), x.begin(), x.end(), inserter(all, all.end()));
+
+	if (all.empty()) {
+		result.push_back(r);
+	} else {
+		// choose pivot
+		long winner = -1;
+		long winnerValue = -1;
+		list<long> winnerNeighbors;
+		for (auto u : all) {
+			list<long> neighbors = data->get(u);
+			set<long> test;
+			set_intersection(p.begin(), p.end(), neighbors.begin(), neighbors.end(), inserter(test, test.end()));
+			long s = static_cast<long>(test.size());
+			if (s > winnerValue) {
+				winnerValue = s;
+				winner = u;
+				winnerNeighbors = neighbors;
+			}
+		}
+		assert(winner != -1);
+
+		// build set for recursion
+		set<long> recursionElements;
+		set_difference(p.begin(), p.end(), winnerNeighbors.begin(), winnerNeighbors.end(), inserter(recursionElements, recursionElements.end()));
+
+		// recursion loop
+		for (auto v : recursionElements) {
+			list<long> neighbors = data->get(v);
+
+			// build p, r, x
+			set<long> pNew;
+			set_intersection(p.begin(), p.end(), neighbors.begin(), neighbors.end(), inserter(pNew, pNew.end()));
+			set<long> rNew(r);
+			rNew.insert(v);
+			set<long> xNew;
+			set_intersection(x.begin(), x.end(), neighbors.begin(), neighbors.end(), inserter(xNew, xNew.end()));
+
+			// call recursive function and store results
+			result.splice(result.begin(), bronKerboschPivot(pNew, rNew, xNew, data));
+
+			// prepare next round
+			p.erase(v);
+			x.insert(v);
+		}
+	}
+
+	return result;
+}
+
+list<set<long>> bronKerboschDegeneracy(shared_ptr<Graph> data) {
+	list<set<long>> result;
+
+	cout << "Build cluster: " << flush;
+	for (long v = 0; v < data->getSize(); ++v) {
+		list<long> neighbors = data->get(v);
+
+		// split neighbors
+		auto splitPoint = find_if(neighbors.begin(), neighbors.end(), [v](long i){return i>v;});
+		set<long> p(splitPoint, neighbors.end());
+		set<long> x(neighbors.begin(), splitPoint);
+
+		// prepare r
+		set<long> r;
+		r.insert(v);
+
+		// shoot and merge
+		result.splice(result.begin(), bronKerboschPivot(p, r, x, data));
+
+		// report progress
+		if (v % 100 == 0) {
+			cout << v << flush;
+		} else if (v % 10 == 0) {
+			cout << "." << flush;
+		}
+	}
+	cout << "done (found " << result.size() << " clusters)" << endl;
+
+	return result;
 }
 
