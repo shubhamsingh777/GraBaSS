@@ -6,5 +6,6 @@ build/*
 
 # tmp files
 .lock-*
+*.swp
 .waf-*
 
