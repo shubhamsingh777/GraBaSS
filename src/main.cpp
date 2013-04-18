@@ -15,7 +15,7 @@
 #include "parser.hpp"
 #include "d1ops.hpp"
 #include "d2ops.hpp"
-#include "clusterer.hpp"
+#include "cliquesearcher.hpp"
 
 using namespace std;
 
@@ -105,7 +105,7 @@ int main(/*int argc, char **argv*/) {
 		shared_ptr<DBFile> db(new DBFile("columns.db"));
 		shared_ptr<DBFile> graphStorage(new DBFile("graph.db"));
 		ofstream outfile;
-		outfile.open("cluster.txt");
+		outfile.open("subspaces.txt");
 		cout << "done" << endl;
 
 		cout << "Parse: " << flush;
@@ -157,13 +157,13 @@ int main(/*int argc, char **argv*/) {
 		sortGraph(graph, sortedGraph);
 
 		// run clustering
-		list<set<long>> clusters = bronKerboschDegeneracy(sortedGraph);
+		list<set<long>> subspaces = bronKerboschDegeneracy(sortedGraph);
 
 		// ok, so lets write the results
 		cout << "Write result: " << flush;
-		for (auto cluster : clusters) {
+		for (auto ss : subspaces) {
 			bool first = true;
-			for (auto dim : cluster) {
+			for (auto dim : ss) {
 				if (first) {
 					first = false;
 				} else {

@@ -1,5 +1,5 @@
-#ifndef CLUSTERER_HPP
-#define CLUSTERER_HPP
+#ifndef CLIQUESEARCHER_HPP
+#define CLIQUESEARCHER_HPP
 
 #include <list>
 #include <memory>

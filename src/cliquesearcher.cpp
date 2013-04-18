@@ -5,7 +5,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include "clusterer.hpp"
+#include "cliquesearcher.hpp"
 
 using namespace std;
 
@@ -180,7 +180,9 @@ list<set<long>> bronKerboschDegeneracy(shared_ptr<Graph> data) {
 			cout << "." << flush;
 		}
 	}
-	cout << "done (found " << result.size() << " clusters)" << endl;
+
+	result.reverse();
+	cout << "done (found " << result.size() << " cliques)" << endl;
 
 	return result;
 }
