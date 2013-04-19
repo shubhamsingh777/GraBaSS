@@ -10,13 +10,16 @@
 
 using namespace std;
 
+struct vertex_t {
+	long id;
+	unordered_set<long> neighbors;
+};
+
 void sortGraph(shared_ptr<Graph> input, shared_ptr<Graph> output) {
 	assert(output->getSize() == 0);
 	cout << "Sort graph: " << flush;
-	typedef unordered_set<long> idSet_t;
 	unordered_map<long, long> idMap;
 	unordered_map<long, long> idMapRev;
-	idSet_t blacklist;
 
 	// detect maximum number of neighbors
 	long maxNeighbors = 0;
@@ -25,9 +28,15 @@ void sortGraph(shared_ptr<Graph> input, shared_ptr<Graph> output) {
 	}
 
 	// build initial bins
-	vector<idSet_t> bins(maxNeighbors + 1, idSet_t());
+	vector<vector<vertex_t*>> bins(maxNeighbors + 1);
 	for (int i = 0; i < input->getSize(); ++i) {
-		bins[input->get(i).size()].insert(i);
+		list<long> tmp = input->get(i);
+
+		auto v = new vertex_t({
+				i,
+				unordered_set<long>(tmp.begin(), tmp.end())});
+
+		bins[v->neighbors.size()].push_back(v);
 	}
 	int binMarker = 0;
 
@@ -43,31 +52,26 @@ void sortGraph(shared_ptr<Graph> input, shared_ptr<Graph> output) {
 
 		// get+remove first element from bin
 		auto iter = bins[binMarker].begin();
-		long element = *iter;
+		long element = (*iter)->id;
+		delete (*iter);
 		bins[binMarker].erase(iter);
 
 		// process element
 		idMap[element] =  counter;
 		idMapRev[counter] = element;
 		++counter;
-		blacklist.insert(element);
 		d = max(d, binMarker);
 		binMarker = max(0, binMarker - 1);
 
 		// create new bins
-		vector<idSet_t> binsNext(maxNeighbors + 1, idSet_t());
+		vector<vector<vertex_t*>> binsNext(maxNeighbors + 1);
 		for (auto bin : bins) {
-			for (auto i : bin) {
-				// count non blacklisted neighbors
-				int nCount = 0;
-				for (auto neighbor : input->get(i)) {
-					if (blacklist.find(neighbor) != blacklist.end()) {
-						++nCount;
-					}
-				}
+			for (auto v : bin) {
+				// delete edges to current element
+				v->neighbors.erase(element);
 
 				// add to right bin
-				binsNext[nCount].insert(i);
+				binsNext[v->neighbors.size()].push_back(v);
 			}
 		}
 		swap(bins, binsNext);
