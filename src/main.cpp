@@ -4,6 +4,7 @@
 #include <limits>
 #include <memory>
 #include <ostream>
+#include <sstream>
 
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_reduce.h>
@@ -16,6 +17,7 @@
 #include "d1ops.hpp"
 #include "d2ops.hpp"
 #include "cliquesearcher.hpp"
+#include "tracer.hpp"
 
 using namespace std;
 
@@ -95,13 +97,19 @@ class TBBSearchHelper {
 };
 
 int main(/*int argc, char **argv*/) {
+	stringstream timerProfile;
+
 	cout << "Check system: " << flush;
 	cout.precision(numeric_limits<double>::digits10 + 1); // set double precision
 	Sys::checkConfig();
 	cout << "done" << endl;
 
 	{
+		auto tMain = shared_ptr<Tracer>(new Tracer("main", &timerProfile));
+		shared_ptr<Tracer> tPhase;
+
 		cout << "Open DB and output file: " << flush;
+		tPhase.reset(new Tracer("open", tMain));
 		shared_ptr<DBFile> db(new DBFile("columns.db"));
 		shared_ptr<DBFile> graphStorage(new DBFile("graph.db"));
 		ofstream outfile;
@@ -109,15 +117,26 @@ int main(/*int argc, char **argv*/) {
 		cout << "done" << endl;
 
 		cout << "Parse: " << flush;
+		tPhase.reset(new Tracer("parse", tMain));
 		ParseResult pr = parse(db, "test.input");
 		cout << "done (" << pr.dims.size() << " columns, " << pr.nRows << " rows)" << endl;
 
 		typedef D1Ops<double, double> ops1;
-		ops1::Exp::calcAndStoreVector(pr.dims);
-		ops1::Var::calcAndStoreVector(pr.dims);
-		ops1::StdDev::calcAndStoreVector(pr.dims);
+		{
+			tPhase.reset(new Tracer("precalc", tMain));
+
+			shared_ptr<Tracer> tPrecalc(new Tracer("exp", tPhase));
+			ops1::Exp::calcAndStoreVector(pr.dims);
+
+			tPrecalc.reset(new Tracer("var", tPhase));
+			ops1::Var::calcAndStoreVector(pr.dims);
+
+			tPrecalc.reset(new Tracer("stdDev", tPhase));
+			ops1::StdDev::calcAndStoreVector(pr.dims);
+		}
 
 		cout << "Build initial graph: " << flush;
+		tPhase.reset(new Tracer("buildGraph", tMain));
 		shared_ptr<Graph> graph(new Graph(graphStorage, "phase0"));
 		double threshold = 0.4;
 		typedef D2Ops<double, double>::Pearson op2;
@@ -153,13 +172,16 @@ int main(/*int argc, char **argv*/) {
 		cout << "done (" << (edgeCount / 2) << " edges, max="<< xMax << ")" << endl;
 
 		// graph transformation
+		tPhase.reset(new Tracer("sortGraph", tMain));
 		shared_ptr<Graph> sortedGraph(new Graph(graphStorage, "phase5"));
 		sortGraph(graph, sortedGraph);
 
-		// run clustering
+		// search cliques
+		tPhase.reset(new Tracer("cliqueSearcher", tMain));
 		list<set<long>> subspaces = bronKerboschDegeneracy(sortedGraph);
 
 		// ok, so lets write the results
+		tPhase.reset(new Tracer("output", tMain));
 		cout << "Write result: " << flush;
 		for (auto ss : subspaces) {
 			bool first = true;
@@ -179,5 +201,7 @@ int main(/*int argc, char **argv*/) {
 		// end of block => free dims and db
 	}
 	cout << "done" << endl;
+
+	cout << endl << "Time profile:" << endl << timerProfile.str() << endl;
 }
 

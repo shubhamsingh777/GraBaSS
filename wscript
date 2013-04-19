@@ -5,7 +5,7 @@ def options(opt):
 
 def configure(conf):
 	conf.load('compiler_cxx')
-	conf.env.append_unique('CXXFLAGS', ['-std=c++0x', '-Wall', '-Wextra'])
+	conf.env.append_unique('CXXFLAGS', ['-std=c++11', '-Wall', '-Wextra'])
 
 	# debug vs. optimize
 	if conf.options.debug:
@@ -33,7 +33,8 @@ def build(bld):
 			'src/graph.cpp',
 			'src/main.cpp',
 			'src/parser.cpp',
-			'src/sys.cpp'],
+			'src/sys.cpp',
+			'src/tracer.cpp'],
 		stlib = ['boost_iostreams'],
 		target='hugeDim')
 
