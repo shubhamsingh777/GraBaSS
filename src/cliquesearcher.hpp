@@ -7,9 +7,10 @@
 #include <unordered_map>
 
 #include "graph.hpp"
+#include "sys.hpp"
 
-std::unordered_map<long, long> sortGraph(std::shared_ptr<Graph> input, std::shared_ptr<Graph> output);
-std::list<std::set<long>> bronKerboschDegeneracy(std::shared_ptr<Graph> data);
+std::unordered_map<bigid_t, bigid_t> sortGraph(graph_t input, graph_t output);
+std::list<std::set<bigid_t>> bronKerboschDegeneracy(graph_t data);
 
 #endif
 

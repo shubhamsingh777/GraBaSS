@@ -6,11 +6,10 @@
 #include <vector>
 
 #include "dbfile.hpp"
-
-typedef Dim<double, double> parserDim_t;
+#include "dim.hpp"
 
 struct ParseResult {
-	std::vector<std::shared_ptr<parserDim_t>> dims;
+	std::vector<datadim_t> dims;
 	long nRows;
 };
 

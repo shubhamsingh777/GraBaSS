@@ -11,27 +11,27 @@ using namespace std;
 
 class TBBEdgeHelper {
 	public:
-		double xMax;
-		list<double> refs;
+		data_t xMax;
+		list<bigid_t> refs;
 
-		TBBEdgeHelper(shared_ptr<Dim<double, double>> _d1, vector<shared_ptr<Dim<double, double>>> *_data, double _threshold) :
-			xMax(numeric_limits<double>::lowest()),
+		TBBEdgeHelper(datadim_t _d1, vector<datadim_t> *_data, data_t _threshold) :
+			xMax(numeric_limits<data_t>::lowest()),
 			refs(),
 			d1(_d1),
 			data(_data),
 			threshold(_threshold) {}
 
 		TBBEdgeHelper(TBBEdgeHelper& obj, tbb::split) :
-			xMax(numeric_limits<double>::lowest()),
+			xMax(numeric_limits<data_t>::lowest()),
 			refs(),
 			d1(obj.d1),
 			data(obj.data),
 			threshold(obj.threshold) {}
 
-		void operator()(const tbb::blocked_range<size_t>& range) {
-			for (size_t i = range.begin(); i != range.end(); ++i) {
+		void operator()(const tbb::blocked_range<bigid_t>& range) {
+			for (auto i = range.begin(); i != range.end(); ++i) {
 				auto d2 = (*data)[i];
-				double x = D2Ops<double, double>::Pearson::calc(d1, d2);
+				data_t x = D2Ops<data_t, data_t>::Pearson::calc(d1, d2);
 				xMax = max(xMax, x);
 				if (x >= threshold) {
 					refs.push_back(i);
@@ -45,16 +45,16 @@ class TBBEdgeHelper {
 		}
 
 	private:
-		shared_ptr<Dim<double, double>> d1;
-		vector<shared_ptr<Dim<double, double>>> *data;
-		double threshold;
+		datadim_t d1;
+		vector<datadim_t> *data;
+		data_t threshold;
 };
 
 class TBBSearchHelper {
 	public:
-		list<double> refs;
+		list<bigid_t> refs;
 
-		TBBSearchHelper(long _id, shared_ptr<Graph> _graph) :
+		TBBSearchHelper(bigid_t _id, graph_t _graph) :
 			refs(),
 			id(_id),
 			graph(_graph) {}
@@ -64,9 +64,9 @@ class TBBSearchHelper {
 			id(obj.id),
 			graph(obj.graph) {}
 
-		void operator()(const tbb::blocked_range<size_t>& range) {
-			for (size_t i = range.begin(); i != range.end(); ++i) {
-				list<long> reverse = graph->get(i);
+		void operator()(const tbb::blocked_range<bigid_t>& range) {
+			for (auto i = range.begin(); i != range.end(); ++i) {
+				list<bigid_t> reverse = graph->get(i);
 				for (auto r : reverse) {
 					if (r == id) {
 						refs.push_back(i);
@@ -80,32 +80,32 @@ class TBBSearchHelper {
 		}
 
 	private:
-		long id;
-		shared_ptr<Graph> graph;
+		bigid_t id;
+		graph_t graph;
 };
 
-void buildGraph(vector<shared_ptr<Dim<double, double>>> data, shared_ptr<Graph> graph, double threshold) {
+void buildGraph(vector<datadim_t> data, graph_t graph, data_t threshold) {
 		cout << "Build initial graph: " << flush;
 
-		typedef D2Ops<double, double>::Pearson op2;
+		typedef D2Ops<data_t, data_t>::Pearson op2;
 		long edgeCount = 0;
-		double xMax = numeric_limits<double>::lowest();
+		data_t xMax = numeric_limits<data_t>::lowest();
 
-		for (long i = 0; i < static_cast<long>(data.size()); i++) {
-			list<long> refs;
+		for (bigid_t i = 0; i < static_cast<bigid_t>(data.size()); i++) {
+			list<bigid_t> refs;
 
 			// reverse search existing vertices
 			TBBSearchHelper helper1(i, graph);
-			parallel_reduce(tbb::blocked_range<size_t>(0, i), helper1);
-			refs.insert(refs.end(), helper1.refs.begin(), helper1.refs.end()); // no splice because of incompatible allocators
+			parallel_reduce(tbb::blocked_range<bigid_t>(0, i), helper1);
+			refs.splice(refs.end(), helper1.refs);
 
 			// do not add self reference (=i)
 
 			// test edges too non exisiting vertices
 			TBBEdgeHelper helper2(data[i], &data, threshold);
-			parallel_reduce(tbb::blocked_range<size_t>(i + 1, data.size()), helper2);
+			parallel_reduce(tbb::blocked_range<bigid_t>(i + 1, data.size()), helper2);
 			xMax = max(xMax, helper2.xMax);
-			refs.insert(refs.end(), helper2.refs.begin(), helper2.refs.end()); // no splice because of incompatible allocators
+			refs.splice(refs.end(), helper2.refs);
 
 			// store
 			graph->add(refs);

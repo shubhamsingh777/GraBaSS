@@ -35,7 +35,7 @@ ParseResult parse(shared_ptr<DBFile> target, string fname) {
 		if (start > 0) {
 			// create dimension
 			string dName = genDimName(n);
-			result.dims.push_back(shared_ptr<parserDim_t>(new parserDim_t(target, dName)));
+			result.dims.push_back(datadim_t(new datadimobj_t(target, dName)));
 
 			// log
 			if (n % 100 == 0) {

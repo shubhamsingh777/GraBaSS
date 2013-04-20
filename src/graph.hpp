@@ -6,6 +6,7 @@
 #include <string>
 
 #include "dim.hpp"
+#include "sys.hpp"
 
 class Graph {
 	public:
@@ -13,13 +14,15 @@ class Graph {
 
 		long getSize();
 
-		long add(std::list<long> refs);
-		std::list<long> get(long id);
+		bigid_t add(std::list<bigid_t> refs);
+		std::list<bigid_t> get(bigid_t id);
 
 	private:
 		Dim<long> index;
-		Dim<long> data;
+		Dim<bigid_t> data;
 };
+
+typedef std::shared_ptr<Graph> graph_t;
 
 #endif
 

@@ -18,30 +18,32 @@
 #include "cliquesearcher.hpp"
 #include "tracer.hpp"
 
+namespace po = boost::program_options;
+
 using namespace std;
 
 int main(int argc, char **argv) {
 	// global config vars
 	string cfgInput;
 	string cfgOutput;
-	double cfgThreshold;
+	data_t cfgThreshold;
 
 	// parse program options
-	boost::program_options::options_description poDesc("Options");
+	po::options_description poDesc("Options");
 	poDesc.add_options()
 		(
 			"input",
-			boost::program_options::value<string>(&cfgInput)->default_value("test.input"),
+			po::value<string>(&cfgInput)->default_value("test.input"),
 			"Input file"
 		)
 		(
 			"output",
-			boost::program_options::value<string>(&cfgOutput)->default_value("subspaces.txt"),
+			po::value<string>(&cfgOutput)->default_value("subspaces.txt"),
 			"Output file"
 		)
 		(
 			"threshold",
-			boost::program_options::value<double>(&cfgThreshold)->default_value(0.4, "0.4"),
+			po::value<data_t>(&cfgThreshold)->default_value(0.4, "0.4"),
 			"Threshold for graph edge generation"
 		)
 		(
@@ -49,9 +51,9 @@ int main(int argc, char **argv) {
 			"Print this help message"
 		)
 	;
-	boost::program_options::variables_map poVm;
-	boost::program_options::store(boost::program_options::parse_command_line(argc, argv, poDesc), poVm);
-	boost::program_options::notify(poVm);
+	po::variables_map poVm;
+	po::store(po::parse_command_line(argc, argv, poDesc), poVm);
+	po::notify(poVm);
 	if (poVm.count("help")) {
 		cout << "hugeDim"<< endl << endl << poDesc << endl;
 		return 0;
@@ -62,11 +64,11 @@ int main(int argc, char **argv) {
 
 	cout << "Check system: " << flush;
 	cout.precision(numeric_limits<double>::digits10 + 1); // set double precision
-	Sys::checkConfig();
+	checkConfig();
 	cout << "done" << endl;
 
 	{
-		auto tMain = shared_ptr<Tracer>(new Tracer("main", &timerProfile));
+		auto tMain = make_shared<Tracer>("main", &timerProfile);
 		shared_ptr<Tracer> tPhase;
 
 		cout << "Open DB and output file: " << flush;
@@ -82,11 +84,11 @@ int main(int argc, char **argv) {
 		ParseResult pr = parse(db, cfgInput);
 		cout << "done (" << pr.dims.size() << " columns, " << pr.nRows << " rows)" << endl;
 
-		typedef D1Ops<double, double> ops1;
+		typedef D1Ops<data_t, data_t> ops1;
 		{
 			tPhase.reset(new Tracer("precalc", tMain));
 
-			shared_ptr<Tracer> tPrecalc(new Tracer("exp", tPhase));
+			auto tPrecalc = make_shared<Tracer>("exp", tPhase);
 			ops1::Exp::calcAndStoreVector(pr.dims);
 
 			tPrecalc.reset(new Tracer("var", tPhase));
@@ -98,17 +100,17 @@ int main(int argc, char **argv) {
 
 		// build graph from data
 		tPhase.reset(new Tracer("buildGraph", tMain));
-		shared_ptr<Graph> graph(new Graph(graphStorage, "phase0"));
+		auto graph = make_shared<Graph>(graphStorage, "phase0");
 		buildGraph(pr.dims, graph, cfgThreshold);
 
 		// graph transformation
 		tPhase.reset(new Tracer("sortGraph", tMain));
-		shared_ptr<Graph> sortedGraph(new Graph(graphStorage, "phase5"));
+		auto sortedGraph = make_shared<Graph>(graphStorage, "phase5");
 		auto idMap = sortGraph(graph, sortedGraph);
 
 		// search cliques
 		tPhase.reset(new Tracer("cliqueSearcher", tMain));
-		list<set<long>> subspaces = bronKerboschDegeneracy(sortedGraph);
+		auto subspaces = bronKerboschDegeneracy(sortedGraph);
 
 		// ok, so lets write the results
 		tPhase.reset(new Tracer("output", tMain));

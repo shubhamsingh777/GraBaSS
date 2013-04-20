@@ -16,15 +16,13 @@
 
 #include "sys.hpp"
 #include "dbfile.hpp"
-
-// prototype
 template <typename T, typename M>
 class DimIter;
 
 template <typename T, typename M = int>
 class Dim {
 	public:
-		static constexpr int SEGMENT_SIZE = 64 * Sys::PAGE_SIZE / sizeof(T); // 64 pages (opt 256 pages)
+		static constexpr int SEGMENT_SIZE = 64 * PAGE_SIZE / sizeof(T); // 64 pages (opt 256 pages)
 
 		friend class DimIter<T,M>;
 		typedef DimIter<T,M> iterator;
@@ -331,6 +329,9 @@ class DimIter : public std::iterator<std::forward_iterator_tag, T> {
 		long pos;
 		typename Dim<T,M>::segment_t* segment = nullptr;
 };
+
+typedef Dim<data_t, data_t> datadimobj_t;
+typedef std::shared_ptr<datadimobj_t> datadim_t;
 
 #endif
 

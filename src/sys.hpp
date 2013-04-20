@@ -3,16 +3,12 @@
 
 #include <cstddef>
 
-class Sys {
-	public:
-		static constexpr std::size_t PAGE_SIZE = 4096;
+typedef double data_t;
+typedef long bigid_t;
 
-		Sys() = delete;
-		Sys(const Sys& obj) = delete;
-		~Sys() = delete;
+constexpr std::size_t PAGE_SIZE = 4096;
 
-		static bool checkConfig();
-};
+bool checkConfig();
 
 #endif
 

@@ -16,10 +16,10 @@ bool check(string name, T is, T should) {
 	}
 }
 
-bool Sys::checkConfig() {
+bool checkConfig() {
 	bool result = true;
 
-	result &= check("pageSize", Sys::PAGE_SIZE, mapped_region::get_page_size());
+	result &= check("pageSize", PAGE_SIZE, mapped_region::get_page_size());
 
 	return result;
 }

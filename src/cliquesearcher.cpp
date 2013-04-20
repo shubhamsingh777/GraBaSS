@@ -10,32 +10,31 @@
 using namespace std;
 
 struct vertex_t {
-	long id;
-	unordered_set<long> neighbors;
+	bigid_t id;
+	unordered_set<bigid_t> neighbors;
 };
 
-unordered_map<long, long> sortGraph(shared_ptr<Graph> input, shared_ptr<Graph> output) {
+unordered_map<bigid_t, bigid_t> sortGraph(graph_t input, graph_t output) {
 	assert(output->getSize() == 0);
 	cout << "Sort graph: " << flush;
-	unordered_map<long, long> idMap;
-	unordered_map<long, long> idMapRev;
+	unordered_map<bigid_t, bigid_t> idMap;
+	unordered_map<bigid_t, bigid_t> idMapRev;
 
 	// detect maximum number of neighbors
 	long maxNeighbors = 0;
-	for (int i = 0; i < input->getSize(); ++i) {
+	for (bigid_t i = 0; i < input->getSize(); ++i) {
 		maxNeighbors = max(maxNeighbors, static_cast<long>(input->get(i).size()));
 	}
 
 	// build initial bins
 	vector<vector<vertex_t*>> bins(maxNeighbors + 1);
-	for (int i = 0; i < input->getSize(); ++i) {
-		list<long> tmp = input->get(i);
+	for (bigid_t i = 0; i < input->getSize(); ++i) {
+		list<bigid_t> tmp = input->get(i);
 
-		auto v = new vertex_t({
+		bins[tmp.size()].push_back(new vertex_t({
 				i,
-				unordered_set<long>(tmp.begin(), tmp.end())});
-
-		bins[v->neighbors.size()].push_back(v);
+				unordered_set<bigid_t>(tmp.begin(), tmp.end())})
+			);
 	}
 	int binMarker = 0;
 
@@ -50,8 +49,8 @@ unordered_map<long, long> sortGraph(shared_ptr<Graph> input, shared_ptr<Graph> o
 		}
 
 		// get+remove first element from bin
-		auto iter = bins[binMarker].begin();
-		long element = (*iter)->id;
+		auto iter = --bins[binMarker].end();
+		bigid_t element = (*iter)->id;
 		delete (*iter);
 		bins[binMarker].erase(iter);
 
@@ -86,10 +85,10 @@ unordered_map<long, long> sortGraph(shared_ptr<Graph> input, shared_ptr<Graph> o
 	// write output
 	for (int i = 0; i < input->getSize(); ++i) {
 		// lookup old element id
-		long iOld = idMapRev[i];
+		bigid_t iOld = idMapRev[i];
 
 		// lookup new neighbor ids
-		list<long> neighborsNew;
+		list<bigid_t> neighborsNew;
 		for (auto neighbor : input->get(iOld)) {
 			neighborsNew.push_back(idMap[neighbor]);
 		}
@@ -107,21 +106,21 @@ unordered_map<long, long> sortGraph(shared_ptr<Graph> input, shared_ptr<Graph> o
 	return idMapRev;
 }
 
-list<set<long>> bronKerboschPivot(set<long> p, set<long> r, set<long> x, shared_ptr<Graph> data) {
-	list<set<long>> result;
-	set<long> all;
+list<set<bigid_t>> bronKerboschPivot(set<bigid_t> p, set<bigid_t> r, set<bigid_t> x, graph_t data) {
+	list<set<bigid_t>> result;
+	set<bigid_t> all;
 	set_union(p.begin(), p.end(), x.begin(), x.end(), inserter(all, all.end()));
 
 	if (all.empty()) {
 		result.push_back(r);
 	} else {
 		// choose pivot
-		long winner = -1;
+		bigid_t winner = -1;
 		long winnerValue = -1;
-		list<long> winnerNeighbors;
+		list<bigid_t> winnerNeighbors;
 		for (auto u : all) {
-			list<long> neighbors = data->get(u);
-			set<long> test;
+			list<bigid_t> neighbors = data->get(u);
+			set<bigid_t> test;
 			set_intersection(p.begin(), p.end(), neighbors.begin(), neighbors.end(), inserter(test, test.end()));
 			long s = static_cast<long>(test.size());
 			if (s > winnerValue) {
@@ -133,19 +132,19 @@ list<set<long>> bronKerboschPivot(set<long> p, set<long> r, set<long> x, shared_
 		assert(winner != -1);
 
 		// build set for recursion
-		set<long> recursionElements;
+		set<bigid_t> recursionElements;
 		set_difference(p.begin(), p.end(), winnerNeighbors.begin(), winnerNeighbors.end(), inserter(recursionElements, recursionElements.end()));
 
 		// recursion loop
 		for (auto v : recursionElements) {
-			list<long> neighbors = data->get(v);
+			list<bigid_t> neighbors = data->get(v);
 
 			// build p, r, x
-			set<long> pNew;
+			set<bigid_t> pNew;
 			set_intersection(p.begin(), p.end(), neighbors.begin(), neighbors.end(), inserter(pNew, pNew.end()));
-			set<long> rNew(r);
+			set<bigid_t> rNew(r);
 			rNew.insert(v);
-			set<long> xNew;
+			set<bigid_t> xNew;
 			set_intersection(x.begin(), x.end(), neighbors.begin(), neighbors.end(), inserter(xNew, xNew.end()));
 
 			// call recursive function and store results
@@ -160,21 +159,20 @@ list<set<long>> bronKerboschPivot(set<long> p, set<long> r, set<long> x, shared_
 	return result;
 }
 
-list<set<long>> bronKerboschDegeneracy(shared_ptr<Graph> data) {
-	list<set<long>> result;
+list<set<bigid_t>> bronKerboschDegeneracy(graph_t data) {
+	list<set<bigid_t>> result;
 
 	cout << "Build cluster: " << flush;
-	for (long v = 0; v < data->getSize(); ++v) {
-		list<long> neighbors = data->get(v);
+	for (bigid_t v = 0; v < data->getSize(); ++v) {
+		list<bigid_t> neighbors = data->get(v);
 
 		// split neighbors
-		auto splitPoint = find_if(neighbors.begin(), neighbors.end(), [v](long i){return i>v;});
-		set<long> p(splitPoint, neighbors.end());
-		set<long> x(neighbors.begin(), splitPoint);
+		auto splitPoint = find_if(neighbors.begin(), neighbors.end(), [v](bigid_t i){return i>v;});
+		set<bigid_t> p(splitPoint, neighbors.end());
+		set<bigid_t> x(neighbors.begin(), splitPoint);
 
 		// prepare r
-		set<long> r;
-		r.insert(v);
+		set<bigid_t> r({v});
 
 		// shoot and merge
 		result.splice(result.begin(), bronKerboschPivot(p, r, x, data));

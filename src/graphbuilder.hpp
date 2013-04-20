@@ -6,8 +6,9 @@
 
 #include "dim.hpp"
 #include "graph.hpp"
+#include "sys.hpp"
 
-void buildGraph(std::vector<std::shared_ptr<Dim<double, double>>> data, std::shared_ptr<Graph> graph, double threshold);
+void buildGraph(std::vector<datadim_t> data, std::shared_ptr<Graph> graph, data_t threshold);
 
 #endif
 
