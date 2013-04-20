@@ -1,18 +1,14 @@
 #include "dim.hpp"
 #include "parser.hpp"
 
-#include <boost/iostreams/device/mapped_file.hpp>
-#include <boost/spirit/include/qi.hpp>
 #include <iostream>
 #include <memory>
 #include <sstream>
 #include <string>
-#include <vector>
 
-namespace qi = boost::spirit::qi;
-
-using namespace boost::iostreams;
 using namespace std;
+
+typedef shared_ptr<istream> stream_t;
 
 string genDimName(int n) {
 	stringstream buffer;
@@ -20,38 +16,80 @@ string genDimName(int n) {
 	return buffer.str();
 }
 
+void stripWhitespaces(stream_t s) {
+	wchar_t c = s->get();
+
+	while (c == ' ') {
+		c = s->get();
+	}
+
+	s->unget();
+}
+
+bool stripEol(stream_t s) {
+	bool result = false;
+	wchar_t c = s->get();
+
+	while ((c == '\r') || (c == '\n')) {
+		result = true;
+		c = s->get();
+	}
+
+	s->unget();
+	return result;
+}
+
+double parseDouble(stream_t s) {
+	stringstream tmp;
+	wchar_t c = s->get();
+
+	while (((c >= '0') && (c <= '9')) || (c == '.') || (c == '-')) {
+		tmp << c;
+		c = s->get();
+	}
+
+	s->unget();
+
+	double result;
+	tmp >> result;
+	return result;
+}
+
 ParseResult parse(shared_ptr<DBFile> target, string fname) {
 	ParseResult result;
 	result.nRows = 0;
 
-	mapped_file file(fname);
-	auto first = file.begin();
-	auto last = file.end();
+	auto stream = make_shared<ifstream>(fname);
 
-	int n = 0;
-	int start = 2;
+	while (stream->peek() != char_traits<char>::eof()) {
+		auto begin = stream->tellg();
+		size_t n = 0;
 
-	auto funRest = [&](int i){
-		if (start > 0) {
-			// create dimension
-			string dName = genDimName(n);
-			result.dims.push_back(datadim_t(new datadimobj_t(target, dName)));
+		while (!stripEol(stream)) {
+			double d = parseDouble(stream);
 
-			// log
-			if (n % 100 == 0) {
-				cout << "+" << flush;
+			if (result.nRows == 0) {
+				// create dimension
+				string dName = genDimName(n);
+				result.dims.push_back(datadim_t(new datadimobj_t(target, dName)));
+
+				// log
+				if (n % 100 == 0) {
+					cout << "+" << flush;
+				}
 			}
-		}
-		result.dims[n]->add(i);
 
-		++n;
-	};
+			if (n < result.dims.size()) {
+				result.dims[n]->add(d);
+			} else {
+				cout << "(row " << result.nRows << "too long)" << flush;
+			}
 
-	auto funBegin = [&](int i){
-		// set start value (used for Dim creation)
-		if (start > 0) {
-			--start;
+			stripWhitespaces(stream);
+			++n;
 		}
+
+		++result.nRows;
 
 		// log
 		if (result.nRows % 100 == 0) {
@@ -60,16 +98,11 @@ ParseResult parse(shared_ptr<DBFile> target, string fname) {
 			cout << "." << flush;
 		}
 
-		// set values for new row
-		n = 0;
-		++result.nRows;
-
-		// pass to normal parse function
-		funRest(i);
-	};
-
-	auto grammar = (qi::int_[funBegin] >> *(qi::space >> qi::int_[funRest])) % qi::no_skip[qi::eol];
-	qi::phrase_parse(first, last, grammar, qi::eol);
+		if (stream->tellg() == begin) {
+			cout << "(stop@" << begin << ")" << flush;
+			break;
+		}
+	}
 
 	return result;
 }
