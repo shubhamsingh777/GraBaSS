@@ -35,6 +35,8 @@ def build(bld):
 			'src/parser.cpp',
 			'src/sys.cpp',
 			'src/tracer.cpp'],
-		stlib = ['boost_iostreams'],
+		stlib = [
+			'boost_iostreams',
+			'boost_program_options'],
 		target='hugeDim')
 

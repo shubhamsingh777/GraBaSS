@@ -6,6 +6,8 @@
 #include <ostream>
 #include <sstream>
 
+#include <boost/program_options.hpp>
+
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_reduce.h>
 
@@ -96,7 +98,44 @@ class TBBSearchHelper {
 		shared_ptr<Graph> graph;
 };
 
-int main(/*int argc, char **argv*/) {
+int main(int argc, char **argv) {
+	// global config vars
+	string cfgInput;
+	string cfgOutput;
+	double cfgThreshold;
+
+	// parse program options
+	boost::program_options::options_description poDesc("Options");
+	poDesc.add_options()
+		(
+			"input",
+			boost::program_options::value<string>(&cfgInput)->default_value("test.input"),
+			"Input file"
+		)
+		(
+			"output",
+			boost::program_options::value<string>(&cfgOutput)->default_value("subspaces.txt"),
+			"Output file"
+		)
+		(
+			"threshold",
+			boost::program_options::value<double>(&cfgThreshold)->default_value(0.4, "0.4"),
+			"Threshold for graph edge generation"
+		)
+		(
+			"help",
+			"Print this help message"
+		)
+	;
+	boost::program_options::variables_map poVm;
+	boost::program_options::store(boost::program_options::parse_command_line(argc, argv, poDesc), poVm);
+	boost::program_options::notify(poVm);
+	if (poVm.count("help")) {
+		cout << "hugeDim"<< endl << endl << poDesc << endl;
+		return 0;
+	}
+
+	// start time tracing
 	stringstream timerProfile;
 
 	cout << "Check system: " << flush;
@@ -113,12 +152,12 @@ int main(/*int argc, char **argv*/) {
 		shared_ptr<DBFile> db(new DBFile("columns.db"));
 		shared_ptr<DBFile> graphStorage(new DBFile("graph.db"));
 		ofstream outfile;
-		outfile.open("subspaces.txt");
+		outfile.open(cfgOutput);
 		cout << "done" << endl;
 
 		cout << "Parse: " << flush;
 		tPhase.reset(new Tracer("parse", tMain));
-		ParseResult pr = parse(db, "test.input");
+		ParseResult pr = parse(db, cfgInput);
 		cout << "done (" << pr.dims.size() << " columns, " << pr.nRows << " rows)" << endl;
 
 		typedef D1Ops<double, double> ops1;
@@ -138,7 +177,6 @@ int main(/*int argc, char **argv*/) {
 		cout << "Build initial graph: " << flush;
 		tPhase.reset(new Tracer("buildGraph", tMain));
 		shared_ptr<Graph> graph(new Graph(graphStorage, "phase0"));
-		double threshold = 0.4;
 		typedef D2Ops<double, double>::Pearson op2;
 		long edgeCount = 0;
 		double xMax = numeric_limits<double>::lowest();
@@ -153,7 +191,7 @@ int main(/*int argc, char **argv*/) {
 			// do not add self reference (=i)
 
 			// test edges too non exisiting vertices
-			TBBEdgeHelper helper2(pr.dims[i], &pr.dims, threshold);
+			TBBEdgeHelper helper2(pr.dims[i], &pr.dims, cfgThreshold);
 			parallel_reduce(tbb::blocked_range<size_t>(i + 1, pr.dims.size()), helper2);
 			xMax = max(xMax, helper2.xMax);
 			refs.insert(refs.end(), helper2.refs.begin(), helper2.refs.end()); // no splice because of incompatible allocators
