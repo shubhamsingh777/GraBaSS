@@ -73,10 +73,9 @@ int main(int argc, char **argv) {
 
 		cout << "Open DB and output file: " << flush;
 		tPhase.reset(new Tracer("open", tMain));
-		shared_ptr<DBFile> db(new DBFile("columns.db"));
-		shared_ptr<DBFile> graphStorage(new DBFile("graph.db"));
-		ofstream outfile;
-		outfile.open(cfgOutput);
+		auto db = make_shared<DBFile>("columns.db");
+		auto graphStorage = make_shared<DBFile>("graph.db");
+		ofstream outfile(cfgOutput);
 		cout << "done" << endl;
 
 		cout << "Parse: " << flush;
