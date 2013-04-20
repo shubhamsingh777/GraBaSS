@@ -26,7 +26,7 @@ class DBFile {
 		}
 
 		template <typename T, typename... A>
-		T* construct(std::string id, A... args) {
+		T* construct(std::string id, A&&... args) {
 			T* ptr = nullptr;
 
 			do {
@@ -40,7 +40,7 @@ class DBFile {
 		}
 
 		template <typename T, typename... A>
-		T* find_or_construct(std::string id, A... args) {
+		T* find_or_construct(std::string id, A&&... args) {
 			T* ptr = nullptr;
 
 			do {
