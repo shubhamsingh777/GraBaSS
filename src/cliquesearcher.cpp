@@ -2,7 +2,6 @@
 #include <cassert>
 #include <iostream>
 #include <memory>
-#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -15,7 +14,7 @@ struct vertex_t {
 	unordered_set<long> neighbors;
 };
 
-void sortGraph(shared_ptr<Graph> input, shared_ptr<Graph> output) {
+unordered_map<long, long> sortGraph(shared_ptr<Graph> input, shared_ptr<Graph> output) {
 	assert(output->getSize() == 0);
 	cout << "Sort graph: " << flush;
 	unordered_map<long, long> idMap;
@@ -104,6 +103,8 @@ void sortGraph(shared_ptr<Graph> input, shared_ptr<Graph> output) {
 
 	// done
 	cout << "done (maxNeighbors=" << maxNeighbors << ", d=" << d << ")" << endl;
+
+	return idMapRev;
 }
 
 list<set<long>> bronKerboschPivot(set<long> p, set<long> r, set<long> x, shared_ptr<Graph> data) {

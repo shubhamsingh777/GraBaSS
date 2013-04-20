@@ -212,7 +212,7 @@ int main(int argc, char **argv) {
 		// graph transformation
 		tPhase.reset(new Tracer("sortGraph", tMain));
 		shared_ptr<Graph> sortedGraph(new Graph(graphStorage, "phase5"));
-		sortGraph(graph, sortedGraph);
+		auto idMap = sortGraph(graph, sortedGraph);
 
 		// search cliques
 		tPhase.reset(new Tracer("cliqueSearcher", tMain));
@@ -229,7 +229,7 @@ int main(int argc, char **argv) {
 				} else {
 					outfile << ",";
 				}
-				outfile << dim;
+				outfile << idMap[dim];
 			}
 			outfile << endl;
 		}
