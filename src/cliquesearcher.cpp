@@ -162,7 +162,7 @@ list<set<bigid_t>> bronKerboschPivot(set<bigid_t> p, set<bigid_t> r, set<bigid_t
 list<set<bigid_t>> bronKerboschDegeneracy(graph_t data) {
 	list<set<bigid_t>> result;
 
-	cout << "Build cluster: " << flush;
+	cout << "Search cliques: " << flush;
 	for (bigid_t v = 0; v < data->getSize(); ++v) {
 		list<bigid_t> neighbors = data->get(v);
 
