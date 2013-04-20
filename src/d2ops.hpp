@@ -8,18 +8,6 @@
 #include <memory>
 #include <string>
 
-// name lookup table
-template <int ID>
-struct D2OpName {
-	static const std::string NAME;
-};
-
-template <>
-const std::string D2OpName<1>::NAME("covariance");
-
-template <>
-const std::string D2OpName<2>::NAME("pearsons r");
-
 // master op
 template <typename T, typename M, int ID, typename EXE>
 struct D2Op {
@@ -32,7 +20,7 @@ struct D2Op {
 	}
 
 	static std::string getName() {
-		return D2OpName<ID>::NAME;
+		return EXE::getName();
 	}
 };
 
@@ -71,6 +59,10 @@ struct _D2OpCov {
 
 		return sum / d1->getSize();
 	}
+
+	static std::string getName() {
+		return "covariance";
+	}
 };
 
 template <typename T, typename M>
@@ -80,6 +72,10 @@ struct _D2OpPearson {
 		M o1 = D1Ops<T,M>::StdDev::getResult(d1);
 		M o2 = D1Ops<T,M>::StdDev::getResult(d2);
 		return cov / (o1 * o2);
+	}
+
+	static std::string getName() {
+		return "pearsons r";
 	}
 };
 

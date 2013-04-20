@@ -31,6 +31,7 @@ def build(bld):
 			'src/dbfile.cpp',
 			'src/cliquesearcher.cpp',
 			'src/graph.cpp',
+			'src/graphbuilder.cpp',
 			'src/main.cpp',
 			'src/parser.cpp',
 			'src/sys.cpp',

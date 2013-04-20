@@ -10,21 +10,6 @@
 #include <string>
 #include <vector>
 
-// name lookup table
-template <int ID>
-struct D1OpName {
-	static const std::string NAME;
-};
-
-template <>
-const std::string D1OpName<1>::NAME("expectation");
-
-template <>
-const std::string D1OpName<2>::NAME("variance");
-
-template <>
-const std::string D1OpName<3>::NAME("standard deviation");
-
 // master op
 template <typename T, typename M, int ID, typename EXE>
 struct D1Op {
@@ -39,7 +24,7 @@ struct D1Op {
 	}
 
 	static void calcAndStoreVector(std::vector<std::shared_ptr<Dim<T,M>>> dims) {
-		std::cout << "Calc " << D1OpName<ID>::NAME << ": " << std::flush;
+		std::cout << "Calc " << EXE::getName() << ": " << std::flush;
 		for (unsigned long i = 0; i < dims.size(); ++i) {
 			calcAndStore(dims[i]);
 
@@ -55,7 +40,7 @@ struct D1Op {
 	}
 
 	static std::string getName() {
-		return D1OpName<ID>::NAME;
+		return EXE::getName();
 	}
 
 	static M getResult(std::shared_ptr<Dim<T,M>> dim) {
@@ -104,6 +89,10 @@ struct _D1OpExp {
 		}
 		return sum / dim->getSize();
 	}
+
+	static std::string getName() {
+		return "expectation";
+	}
 };
 
 template <typename T, typename M>
@@ -123,6 +112,10 @@ struct _D1OpVar {
 		}
 		return sum / dim->getSize();
 	}
+
+	static std::string getName() {
+		return "variance";
+	}
 };
 
 template <typename T, typename M>
@@ -130,6 +123,10 @@ struct _D1OpStdDev {
 	static M run(std::shared_ptr<Dim<T,M>> dim) {
 		M var = D1Ops<T,M>::Var::getResult(dim);
 		return sqrt(var);
+	}
+
+	static std::string getName() {
+		return "standard deviation";
 	}
 };
 
