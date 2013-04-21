@@ -10,7 +10,23 @@
 
 using namespace std;
 
-inline void testDifference(long& winnerValue, list<bigid_t>& recursionElements, const set<bigid_t>& p, const list<bigid_t>&& neighbors) {
+typedef vector<vector<bigid_t>> cs_workdataobj_t;
+typedef cs_workdataobj_t* cs_workdata_t;
+
+cs_workdata_t createWorkdata(graph_t graph) {
+	auto result = new cs_workdataobj_t(graph->getSize());
+
+	for (bigid_t i = 0; i < graph->getSize(); ++i) {
+		auto tmp = graph->get(i);
+		vector<bigid_t> v(tmp.begin(), tmp.end());
+		v.shrink_to_fit();
+		(*result)[i] = move(v);
+	}
+
+	return result;
+}
+
+inline void testDifference(long& winnerValue, list<bigid_t>& recursionElements, const set<bigid_t>& p, vector<bigid_t>& neighbors) {
 	list<bigid_t> test;
 	set_difference(p.begin(), p.end(), neighbors.begin(), neighbors.end(), back_inserter(test));
 
@@ -21,7 +37,7 @@ inline void testDifference(long& winnerValue, list<bigid_t>& recursionElements, 
 	}
 }
 
-list<list<bigid_t>> bronKerboschPivot(set<bigid_t>&& p, list<bigid_t>&& r, set<bigid_t>&& x, graph_t data) {
+list<list<bigid_t>> bronKerboschPivot(set<bigid_t>&& p, list<bigid_t>&& r, set<bigid_t>&& x, cs_workdata_t data) {
 	list<list<bigid_t>> result;
 
 	if (p.empty() && x.empty()) {
@@ -31,15 +47,15 @@ list<list<bigid_t>> bronKerboschPivot(set<bigid_t>&& p, list<bigid_t>&& r, set<b
 		long winnerValue = p.size() + 1;
 		list<bigid_t> recursionElements;
 		for (auto u : p) {
-			testDifference(winnerValue, recursionElements, p, data->get(u));
+			testDifference(winnerValue, recursionElements, p, (*data)[u]);
 		}
 		for (auto u : x) {
-			testDifference(winnerValue, recursionElements, p, data->get(u));
+			testDifference(winnerValue, recursionElements, p, (*data)[u]);
 		}
 
 		// recursion loop
 		for (auto v : recursionElements) {
-			list<bigid_t> neighbors = data->get(v);
+			auto& neighbors = (*data)[v];
 
 			// build p, r, x
 			set<bigid_t> pNew;
@@ -62,11 +78,12 @@ list<list<bigid_t>> bronKerboschPivot(set<bigid_t>&& p, list<bigid_t>&& r, set<b
 }
 
 list<list<bigid_t>> bronKerboschDegeneracy(graph_t data) {
-	list<list<bigid_t>> result;
-
 	cout << "Search cliques: " << flush;
-	for (bigid_t v = 0; v < data->getSize(); ++v) {
-		list<bigid_t> neighbors = data->get(v);
+	list<list<bigid_t>> result;
+	unique_ptr<cs_workdataobj_t> workdata(createWorkdata(data));
+
+	for (bigid_t v = 0; v < static_cast<bigid_t>(workdata->size()); ++v) {
+		auto& neighbors = (*workdata)[v];
 
 		// split neighbors
 		auto splitPoint = find_if(neighbors.begin(), neighbors.end(), [v](bigid_t i){return i>v;});
@@ -77,7 +94,7 @@ list<list<bigid_t>> bronKerboschDegeneracy(graph_t data) {
 		list<bigid_t> r({v});
 
 		// shoot and merge
-		result.splice(result.end(), bronKerboschPivot(move(p), move(r), move(x), data));
+		result.splice(result.end(), bronKerboschPivot(move(p), move(r), move(x), workdata.get()));
 
 		// report progress
 		if (v % 100 == 0) {
@@ -87,7 +104,6 @@ list<list<bigid_t>> bronKerboschDegeneracy(graph_t data) {
 		}
 	}
 
-	result.reverse();
 	cout << "done (found " << result.size() << " cliques)" << endl;
 
 	return result;
