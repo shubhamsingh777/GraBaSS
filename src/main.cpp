@@ -26,6 +26,8 @@ int main(int argc, char **argv) {
 	// global config vars
 	string cfgInput;
 	string cfgOutput;
+	string cfgDbData;
+	string cfgDbGraph;
 	data_t cfgThreshold;
 	bool cfgForce;
 
@@ -41,6 +43,16 @@ int main(int argc, char **argv) {
 			"output",
 			po::value<string>(&cfgOutput)->default_value("subspaces.txt"),
 			"Output file"
+		)
+		(
+			"dbdata",
+			po::value<string>(&cfgDbData)->default_value("columns.db"),
+			"DB file that stores parsed data"
+		)
+		(
+			"dbgraph",
+			po::value<string>(&cfgDbGraph)->default_value("graph.db"),
+			"DB file that stores generated and transformed graphs"
 		)
 		(
 			"threshold",
@@ -79,8 +91,8 @@ int main(int argc, char **argv) {
 
 		cout << "Open DB and output file: " << flush;
 		tPhase.reset(new Tracer("open", tMain));
-		auto db = make_shared<DBFile>("columns.db");
-		auto graphStorage = make_shared<DBFile>("graph.db");
+		auto db = make_shared<DBFile>(cfgDbData);
+		auto graphStorage = make_shared<DBFile>(cfgDbGraph);
 		ofstream outfile(cfgOutput);
 		cout << "done" << endl;
 
