@@ -13,6 +13,8 @@
 #include <unordered_map>
 
 #include <boost/interprocess/containers/map.hpp>
+#include <boost/interprocess/containers/string.hpp>
+#include <boost/interprocess/containers/vector.hpp>
 #include <boost/interprocess/managed_mapped_file.hpp>
 
 #include "sys.hpp"
@@ -83,6 +85,14 @@ class Dim {
 				file(file),
 				callbackID(file->registerPResetFun(std::bind(&Dim::resetPtrs, this))) {
 			resetPtrs();
+
+			// store to global list
+			if (*this->size == 0) {
+				auto list = getList(this->file);
+				stored_string_t tmp(this->file->template getAllocator<char>());
+				tmp = this->name.c_str();
+				list->push_back(tmp);
+			}
 		}
 
 		~Dim() {
@@ -170,6 +180,21 @@ class Dim {
 				// partial
 				return (*this->size) % SEGMENT_SIZE;
 			}
+		}
+
+		typedef boost::interprocess::basic_string<
+			char,
+			std::char_traits<char>,
+			DBFile::allocator<char>
+				> stored_string_t;
+
+		typedef boost::interprocess::vector<
+			stored_string_t,
+			DBFile::allocator<stored_string_t>
+				> stored_list_t;
+
+		static stored_list_t* getList(std::shared_ptr<DBFile> dbfile) {
+			return dbfile->find_or_construct<stored_list_t>("dims", dbfile->getAllocator<stored_string_t>());
 		}
 
 	private:

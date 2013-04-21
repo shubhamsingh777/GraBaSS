@@ -27,6 +27,7 @@ int main(int argc, char **argv) {
 	string cfgInput;
 	string cfgOutput;
 	data_t cfgThreshold;
+	bool cfgForce;
 
 	// parse program options
 	po::options_description poDesc("Options");
@@ -47,6 +48,10 @@ int main(int argc, char **argv) {
 			"Threshold for graph edge generation"
 		)
 		(
+			"force",
+			"Force to parse and progress data, ignores cache"
+		)
+		(
 			"help",
 			"Print this help message"
 		)
@@ -58,6 +63,7 @@ int main(int argc, char **argv) {
 		cout << "hugeDim"<< endl << endl << poDesc << endl;
 		return 0;
 	}
+	cfgForce = poVm.count("force");
 
 	// start time tracing
 	stringstream timerProfile;
@@ -79,28 +85,39 @@ int main(int argc, char **argv) {
 		cout << "done" << endl;
 
 		cout << "Parse: " << flush;
-		tPhase.reset(new Tracer("parse", tMain));
-		ParseResult pr = parse(db, cfgInput);
-		cout << "done (" << pr.dims.size() << " columns, " << pr.nRows << " rows)" << endl;
+		auto dimNameList = datadimobj_t::getList(db);
+		vector<datadim_t> dims;
+		if (!cfgForce && (dimNameList->size() > 0)) {
+			for (auto name : *dimNameList) {
+				string stdname(name.c_str());
+				dims.push_back(make_shared<datadimobj_t>(db, stdname));
+			}
+			cout << "skipped" << endl;
+		} else {
+			tPhase.reset(new Tracer("parse", tMain));
+			ParseResult pr = parse(db, cfgInput);
+			dims = pr.dims;
+			cout << "done (" << pr.dims.size() << " columns, " << pr.nRows << " rows)" << endl;
+		}
 
 		typedef D1Ops<data_t, data_t> ops1;
 		{
 			tPhase.reset(new Tracer("precalc", tMain));
 
 			auto tPrecalc = make_shared<Tracer>("exp", tPhase);
-			ops1::Exp::calcAndStoreVector(pr.dims);
+			ops1::Exp::calcAndStoreVector(dims);
 
 			tPrecalc.reset(new Tracer("var", tPhase));
-			ops1::Var::calcAndStoreVector(pr.dims);
+			ops1::Var::calcAndStoreVector(dims);
 
 			tPrecalc.reset(new Tracer("stdDev", tPhase));
-			ops1::StdDev::calcAndStoreVector(pr.dims);
+			ops1::StdDev::calcAndStoreVector(dims);
 		}
 
 		// build graph from data
 		tPhase.reset(new Tracer("buildGraph", tMain));
 		auto graph = make_shared<Graph>(graphStorage, "phase0");
-		buildGraph(pr.dims, graph, cfgThreshold);
+		buildGraph(dims, graph, cfgThreshold);
 
 		// graph transformation
 		tPhase.reset(new Tracer("sortGraph", tMain));
