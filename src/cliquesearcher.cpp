@@ -51,7 +51,7 @@ list<set<bigid_t>> bronKerboschPivot(set<bigid_t> p, set<bigid_t> r, set<bigid_t
 			set_intersection(x.begin(), x.end(), neighbors.begin(), neighbors.end(), inserter(xNew, xNew.end()));
 
 			// call recursive function and store results
-			result.splice(result.begin(), bronKerboschPivot(pNew, rNew, xNew, data));
+			result.splice(result.end(), bronKerboschPivot(pNew, rNew, xNew, data));
 
 			// prepare next round
 			p.erase(v);
@@ -78,7 +78,7 @@ list<set<bigid_t>> bronKerboschDegeneracy(graph_t data) {
 		set<bigid_t> r({v});
 
 		// shoot and merge
-		result.splice(result.begin(), bronKerboschPivot(p, r, x, data));
+		result.splice(result.end(), bronKerboschPivot(p, r, x, data));
 
 		// report progress
 		if (v % 100 == 0) {

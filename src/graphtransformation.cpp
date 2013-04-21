@@ -41,6 +41,9 @@ void joinEdges(vector<graph_t> input, graph_t output) {
 			neighborsNew.insert(tmp.begin(), tmp.end());
 		}
 
+		// remove self reference
+		neighborsNew.erase(v);
+
 		list<bigid_t>l (neighborsNew.begin(), neighborsNew.end());
 		output->add(move(l));
 
