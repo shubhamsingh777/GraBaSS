@@ -20,6 +20,8 @@ class DBFile {
 		int registerPResetFun(pResetFun_t fun);
 		void unregisterPResetFun(int id);
 
+		void grow();
+
 		template <typename T>
 		std::pair<T*, std::size_t> find(std::string id) {
 			return this->mfile->find<T>(id.c_str());
@@ -53,13 +55,19 @@ class DBFile {
 			return ptr;
 		}
 
+		template <typename T>
+		using allocator = boost::interprocess::allocator<T, boost::interprocess::managed_mapped_file::segment_manager>;
+
+		template <typename T>
+		allocator<T> getAllocator() {
+			return allocator<T>(this->mfile->get_segment_manager());
+		}
+
 	private:
 		std::string name;
 		std::unique_ptr<mfile_t> mfile;
 		std::unordered_map<int, pResetFun_t> resetFuns;
 		int idCounter = 0;
-
-		void grow();
 };
 
 #endif

@@ -12,6 +12,7 @@
 #include <string>
 #include <unordered_map>
 
+#include <boost/interprocess/containers/map.hpp>
 #include <boost/interprocess/managed_mapped_file.hpp>
 
 #include "sys.hpp"
@@ -68,21 +69,10 @@ class Dim {
 			std::cout << "ok" << std::endl;
 
 			std::cout << "rescue metadata:" << std::endl;
-			auto testFirst = sourceFile.find<int>(genMetadataFirstID(name).c_str());
-			assert(testFirst.second == 1);
-			int first = *testFirst.first;
-			targetFile.construct<int>(genMetadataFirstID(name).c_str())(first);
-			int* lastPtr = targetFile.construct<int>(genMetadataLastID(name).c_str())(first);
-			int next = first;
-			while (next != 0) {
-				std::string mID = genMetadataID(name, next);
-				auto test = sourceFile.find<metadata_t>(mID.c_str());
-				assert(test.second == 1);
-				targetFile.construct<metadata_t>(mID.c_str())(*test.first);
-				(*lastPtr) = next;
-				std::cout << next << "|" << std::flush;
-				next = (*test.first).next;
-			}
+			auto testMetadata = sourceFile.find<metadata_t>(genMetadataID(name).c_str());
+			assert(testMetadata.second == 1);
+			boost::interprocess::allocator<metadata_value_t, boost::interprocess::managed_mapped_file::segment_manager> metadataAlloc(targetFile.get_segment_manager());
+			targetFile.construct<metadata_t>(testMetadata.first, metadataAlloc);
 			std::cout << "ok" << std::endl;
 
 			std::cout << "done! :)" << std::endl;
@@ -93,7 +83,6 @@ class Dim {
 				file(file),
 				callbackID(file->registerPResetFun(std::bind(&Dim::resetPtrs, this))) {
 			resetPtrs();
-			assert(!((*this->metadataFirst) == 0) || ((*this->metadataLast) == 0));
 		}
 
 		~Dim() {
@@ -130,42 +119,21 @@ class Dim {
 		}
 
 		void addMetadata(int id, M data) {
-			assert(id != 0);
-
-			std::string mIDNew = genMetadataID(name, id);
-			metadata_t md = {data, 0};
-			file->construct<metadata_t>(mIDNew, md);
-
-			if ((*this->metadataFirst) == 0) {
-				(*this->metadataFirst) = id;
-			} else {
-				std::string mIDOld = genMetadataID(name, *this->metadataLast);
-				auto lookup = file->find<metadata_t>(mIDOld);
-				assert(lookup.second == 1);
-				(*lookup.first).next = id;
+			try {
+				//this->metadata->insert(metadata_value_t(id, data));
+				(*this->metadata)[id] = data;
+			} catch (const std::bad_alloc& e) {
+				this->file->grow();
+				addMetadata(id, data);
 			}
-			(*this->metadataLast) = id;
-
-			// cache stuff
-			this->metadata.emplace(id, data);
 		}
 
 		M getMetadata(int id) {
 			std::lock_guard<std::mutex> lock(this->mutexMetadata);
-
 			try {
-				// try to used cached value
-				return this->metadata.at(id);
+				return this->metadata->at(id);
 			} catch (const std::out_of_range& e) {
-				std::string mID = genMetadataID(name, id);
-				auto lookup = file->find<metadata_t>(mID);
-
-				if (lookup.second != 1) {
-					throw std::runtime_error("Metadata not found");
-				}
-
-				this->metadata.emplace(id, (*lookup.first).data);
-				return (*lookup.first).data;
+				throw std::runtime_error("Metadata not found");
 			}
 		}
 
@@ -207,10 +175,13 @@ class Dim {
 	private:
 		typedef std::array<T, SEGMENT_SIZE> segment_t;
 
-		struct metadata_t {
-			M data;
-			int next;
-		};
+		typedef std::pair<const int, M> metadata_value_t;
+		typedef boost::interprocess::map<
+			int, // key type
+			M, // value type
+			std::less<int>, // comparator
+			DBFile::allocator<metadata_value_t> // allocator
+				> metadata_t;
 
 		std::mutex mutexSegments;
 		std::mutex mutexMetadata;
@@ -219,9 +190,7 @@ class Dim {
 		std::shared_ptr<DBFile> file;
 		long* size;
 		std::unordered_map<long, segment_t*> segments;
-		std::unordered_map<int, M> metadata;
-		int* metadataFirst;
-		int* metadataLast;
+		metadata_t* metadata;
 		int callbackID;
 
 		static std::string genSizeID(std::string name) {
@@ -236,28 +205,15 @@ class Dim {
 			return buffer.str();
 		}
 
-		static std::string genMetadataFirstID(std::string name) {
+		static std::string genMetadataID(std::string name) {
 			std::stringstream buffer;
-			buffer << "dims/" << name << "/metadata/first";
-			return buffer.str();
-		}
-
-		static std::string genMetadataLastID(std::string name) {
-			std::stringstream buffer;
-			buffer << "dims/" << name << "/metadata/last";
-			return buffer.str();
-		}
-
-		static std::string genMetadataID(std::string name, int n) {
-			std::stringstream buffer;
-			buffer << "dims/" << name << "/metadata/" << n;
+			buffer << "dims/" << name << "/metadata";
 			return buffer.str();
 		}
 
 		void resetPtrs() {
 			this->size = file->find_or_construct<long>(genSizeID(name), 0);
-			this->metadataFirst = file->find_or_construct<int>(genMetadataFirstID(name), 0);
-			this->metadataLast = file->find_or_construct<int>(genMetadataLastID(name), 0);
+			this->metadata = file->find_or_construct<metadata_t>(genMetadataID(name), std::less<int>(), file->getAllocator<metadata_value_t>());
 
 			// reset segment pointers
 			this->segments.clear();
