@@ -2,6 +2,7 @@
 #include <cassert>
 #include <iostream>
 #include <memory>
+#include <set>
 #include <unordered_set>
 #include <vector>
 
@@ -9,34 +10,32 @@
 
 using namespace std;
 
-list<set<bigid_t>> bronKerboschPivot(set<bigid_t> p, set<bigid_t> r, set<bigid_t> x, graph_t data) {
-	list<set<bigid_t>> result;
-	set<bigid_t> all;
-	set_union(p.begin(), p.end(), x.begin(), x.end(), inserter(all, all.end()));
+inline void testDifference(long& winnerValue, list<bigid_t>& recursionElements, const set<bigid_t>& p, const list<bigid_t>&& neighbors) {
+	list<bigid_t> test;
+	set_difference(p.begin(), p.end(), neighbors.begin(), neighbors.end(), back_inserter(test));
 
-	if (all.empty()) {
+	long s = static_cast<long>(test.size());
+	if (s < winnerValue) {
+		winnerValue = s;
+		recursionElements = move(test);
+	}
+}
+
+list<list<bigid_t>> bronKerboschPivot(set<bigid_t>&& p, list<bigid_t>&& r, set<bigid_t>&& x, graph_t data) {
+	list<list<bigid_t>> result;
+
+	if (p.empty() && x.empty()) {
 		result.push_back(r);
 	} else {
 		// choose pivot
-		bigid_t winner = -1;
-		long winnerValue = -1;
-		list<bigid_t> winnerNeighbors;
-		for (auto u : all) {
-			list<bigid_t> neighbors = data->get(u);
-			set<bigid_t> test;
-			set_intersection(p.begin(), p.end(), neighbors.begin(), neighbors.end(), inserter(test, test.end()));
-			long s = static_cast<long>(test.size());
-			if (s > winnerValue) {
-				winnerValue = s;
-				winner = u;
-				winnerNeighbors = neighbors;
-			}
+		long winnerValue = p.size() + 1;
+		list<bigid_t> recursionElements;
+		for (auto u : p) {
+			testDifference(winnerValue, recursionElements, p, data->get(u));
 		}
-		assert(winner != -1);
-
-		// build set for recursion
-		set<bigid_t> recursionElements;
-		set_difference(p.begin(), p.end(), winnerNeighbors.begin(), winnerNeighbors.end(), inserter(recursionElements, recursionElements.end()));
+		for (auto u : x) {
+			testDifference(winnerValue, recursionElements, p, data->get(u));
+		}
 
 		// recursion loop
 		for (auto v : recursionElements) {
@@ -45,13 +44,13 @@ list<set<bigid_t>> bronKerboschPivot(set<bigid_t> p, set<bigid_t> r, set<bigid_t
 			// build p, r, x
 			set<bigid_t> pNew;
 			set_intersection(p.begin(), p.end(), neighbors.begin(), neighbors.end(), inserter(pNew, pNew.end()));
-			set<bigid_t> rNew(r);
-			rNew.insert(v);
+			list<bigid_t> rNew(r);
+			rNew.push_back(v);
 			set<bigid_t> xNew;
 			set_intersection(x.begin(), x.end(), neighbors.begin(), neighbors.end(), inserter(xNew, xNew.end()));
 
 			// call recursive function and store results
-			result.splice(result.end(), bronKerboschPivot(pNew, rNew, xNew, data));
+			result.splice(result.end(), bronKerboschPivot(move(pNew), move(rNew), move(xNew), data));
 
 			// prepare next round
 			p.erase(v);
@@ -62,8 +61,8 @@ list<set<bigid_t>> bronKerboschPivot(set<bigid_t> p, set<bigid_t> r, set<bigid_t
 	return result;
 }
 
-list<set<bigid_t>> bronKerboschDegeneracy(graph_t data) {
-	list<set<bigid_t>> result;
+list<list<bigid_t>> bronKerboschDegeneracy(graph_t data) {
+	list<list<bigid_t>> result;
 
 	cout << "Search cliques: " << flush;
 	for (bigid_t v = 0; v < data->getSize(); ++v) {
@@ -75,10 +74,10 @@ list<set<bigid_t>> bronKerboschDegeneracy(graph_t data) {
 		set<bigid_t> x(neighbors.begin(), splitPoint);
 
 		// prepare r
-		set<bigid_t> r({v});
+		list<bigid_t> r({v});
 
 		// shoot and merge
-		result.splice(result.end(), bronKerboschPivot(p, r, x, data));
+		result.splice(result.end(), bronKerboschPivot(move(p), move(r), move(x), data));
 
 		// report progress
 		if (v % 100 == 0) {
