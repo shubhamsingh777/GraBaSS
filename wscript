@@ -20,7 +20,7 @@ def configure(conf):
 
 		# fix -fast-math compile error
 		# see http://llvm.org/bugs/show_bug.cgi?id=13745
-		conf.env.append_unique('CXXFLAGS', ['-D__extern_always_inline=extern __always_inline']);
+		conf.env.append_unique('CXXFLAGS', ['-D__extern_always_inline=extern __always_inline'])
 
 def build(bld):
 	bld.program(
