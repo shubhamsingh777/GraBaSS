@@ -1,8 +1,57 @@
 #include <unordered_set>
+#include <utility>
 
 #include "graphtransformation.hpp"
 
 using namespace std;
+
+void lookupNeighbors(graph_t input, graph_t output) {
+	assert(output->getSize() == 0);
+
+	for (bigid_t v = 0; v < input->getSize(); ++v) {
+		unordered_set<bigid_t> neighborsNew;
+
+		for (auto w : input->get(v)) {
+			auto tmp = input->get(w);
+			neighborsNew.insert(tmp.begin(), tmp.end());
+		}
+
+		list<bigid_t> l(neighborsNew.begin(), neighborsNew.end());
+		output->add(move(l));
+
+		// report progress
+		if (v % 1000 == 0) {
+			cout << v << flush;
+		} else if (v % 100 == 0) {
+			cout << "." << flush;
+		}
+	}
+}
+
+void joinEdges(vector<graph_t> input, graph_t output) {
+	assert(output->getSize() == 0);
+	assert(!input.empty());
+
+	bigid_t size = (*input.begin())->getSize();
+	for (bigid_t v = 0; v < size; ++v) {
+		unordered_set<bigid_t> neighborsNew;
+
+		for (auto g : input) {
+			auto tmp = g->get(v);
+			neighborsNew.insert(tmp.begin(), tmp.end());
+		}
+
+		list<bigid_t>l (neighborsNew.begin(), neighborsNew.end());
+		output->add(move(l));
+
+		// report progress
+		if (v % 1000 == 0) {
+			cout << v << flush;
+		} else if (v % 100 == 0) {
+			cout << "." << flush;
+		}
+	}
+}
 
 struct vertex_t {
 	bigid_t id;

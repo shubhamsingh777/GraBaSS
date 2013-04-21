@@ -31,6 +31,7 @@ int main(int argc, char **argv) {
 	string cfgDbGraph;
 	data_t cfgThreshold;
 	bool cfgForce;
+	unsigned int cfgGraphDist;
 
 	// parse program options
 	po::options_description poDesc("Options");
@@ -59,6 +60,11 @@ int main(int argc, char **argv) {
 			"threshold",
 			po::value<data_t>(&cfgThreshold)->default_value(0.4, "0.4"),
 			"Threshold for graph edge generation"
+		)
+		(
+			"graphDist",
+			po::value<unsigned int>(&cfgGraphDist)->default_value(1),
+			"Maximal graph distance of clique members (ignored if < 2)"
 		)
 		(
 			"force",
@@ -132,7 +138,33 @@ int main(int argc, char **argv) {
 		auto graph = make_shared<Graph>(graphStorage, "phase0");
 		buildGraph(dims, graph, cfgThreshold);
 
-		// graph transformation
+		// calc distance graph
+		if (cfgGraphDist > 1) {
+			tPhase.reset(new Tracer("calcDistGraph", tMain));
+			vector<graph_t> toJoin({graph});
+			auto last = graph;
+
+			for (unsigned int i = 2; i <= cfgGraphDist; ++i) {
+				cout << "Calc graph distance " << i << ": " << flush;
+				stringstream ss;
+				ss << "dist" << i;
+				auto next = make_shared<Graph>(graphStorage, ss.str());
+
+				lookupNeighbors(last, next);
+
+				toJoin.push_back(next);
+				last = next;
+				cout << "done" << endl;
+			}
+
+			cout << "Join graphs: " << flush;
+			auto distGraph = make_shared<Graph>(graphStorage, "distGraph");
+			joinEdges(toJoin, distGraph);
+			graph = distGraph;
+			cout << "done" << endl;
+		}
+
+		// sort graph
 		tPhase.reset(new Tracer("sortGraph", tMain));
 		auto sortedGraph = make_shared<Graph>(graphStorage, "phase5");
 		auto idMap = sortGraph(graph, sortedGraph);
