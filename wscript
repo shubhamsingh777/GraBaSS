@@ -32,6 +32,7 @@ def build(bld):
 			'src/cliquesearcher.cpp',
 			'src/graph.cpp',
 			'src/graphbuilder.cpp',
+			'src/graphtransformation.cpp',
 			'src/main.cpp',
 			'src/parser.cpp',
 			'src/sys.cpp',

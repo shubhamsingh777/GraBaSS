@@ -17,6 +17,7 @@
 #include "d1ops.hpp"
 #include "cliquesearcher.hpp"
 #include "tracer.hpp"
+#include "graphtransformation.hpp"
 
 namespace po = boost::program_options;
 
