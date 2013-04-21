@@ -25,6 +25,18 @@ struct D1Op {
 
 	static void calcAndStoreVector(std::vector<std::shared_ptr<Dim<T,M>>> dims) {
 		std::cout << "Calc " << EXE::getName() << ": " << std::flush;
+
+		// test if there is already a cached version
+		if (!dims.empty()) {
+			try {
+				(*dims.begin())->getMetadata(ID);
+				std::cout << "skipped" << std::endl;
+				return;
+			} catch (const std::runtime_error& e) {
+				// noop, just continue with calculation
+			}
+		}
+
 		for (unsigned long i = 0; i < dims.size(); ++i) {
 			calcAndStore(dims[i]);
 
