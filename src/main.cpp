@@ -8,6 +8,8 @@
 
 #include <boost/program_options.hpp>
 
+#include <tbb/task_scheduler_init.h>
+
 #include "sys.hpp"
 #include "dbfile.hpp"
 #include "dim.hpp"
@@ -32,6 +34,7 @@ int main(int argc, char **argv) {
 	data_t cfgThreshold;
 	bool cfgForce;
 	unsigned int cfgGraphDist;
+	unsigned int cfgThreads;
 
 	// parse program options
 	po::options_description poDesc("Options");
@@ -67,6 +70,11 @@ int main(int argc, char **argv) {
 			"Maximal graph distance of clique members (ignored if < 2)"
 		)
 		(
+			"threads",
+			po::value<unsigned int>(&cfgThreads)->default_value(0),
+			"Number of threads (0 = auto)"
+		)
+		(
 			"force",
 			"Force to parse and progress data, ignores cache"
 		)
@@ -91,6 +99,13 @@ int main(int argc, char **argv) {
 		return EXIT_SUCCESS;
 	}
 	cfgForce = poVm.count("force");
+
+	// setup tbb
+	if (cfgThreads == 0) {
+		tbb::task_scheduler_init(-1 /*=tbb::task_scheduler_init::automatic*/);
+	} else {
+		tbb::task_scheduler_init(cfgThreads);
+	}
 
 	// start time tracing
 	stringstream timerProfile;
