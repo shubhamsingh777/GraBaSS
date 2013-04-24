@@ -76,11 +76,19 @@ int main(int argc, char **argv) {
 		)
 	;
 	po::variables_map poVm;
-	po::store(po::parse_command_line(argc, argv, poDesc), poVm);
+	try {
+		po::store(po::parse_command_line(argc, argv, poDesc), poVm);
+	} catch (const std::exception& e) {
+		cout << "Error:" << endl
+			<< e.what() << endl
+			<< endl
+			<< "Use --help to get help ;)" << endl;
+		return EXIT_FAILURE;
+	}
 	po::notify(poVm);
 	if (poVm.count("help")) {
 		cout << "hugeDim"<< endl << endl << poDesc << endl;
-		return 0;
+		return EXIT_SUCCESS;
 	}
 	cfgForce = poVm.count("force");
 
@@ -196,5 +204,7 @@ int main(int argc, char **argv) {
 	cout << "done" << endl;
 
 	cout << endl << "Time profile:" << endl << timerProfile.str() << endl;
+
+	return EXIT_SUCCESS;
 }
 
