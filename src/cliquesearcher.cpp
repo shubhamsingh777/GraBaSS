@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <atomic>
 #include <cassert>
 #include <iostream>
 #include <memory>
@@ -6,12 +7,17 @@
 #include <unordered_set>
 #include <vector>
 
+#include <tbb/blocked_range.h>
+#include <tbb/parallel_reduce.h>
+
 #include "cliquesearcher.hpp"
 
 using namespace std;
 
 typedef vector<vector<bigid_t>> cs_workdataobj_t;
 typedef cs_workdataobj_t* cs_workdata_t;
+typedef atomic<bigid_t> cs_progressobj_t;
+typedef cs_progressobj_t* cs_progress_t;
 
 cs_workdata_t createWorkdata(graph_t graph) {
 	auto result = new cs_workdataobj_t(graph->getSize());
@@ -77,35 +83,62 @@ list<list<bigid_t>> bronKerboschPivot(set<bigid_t>&& p, list<bigid_t>&& r, set<b
 	return result;
 }
 
+class TBBBKHelper {
+	public:
+		list<list<bigid_t>> result;
+
+		TBBBKHelper(cs_workdata_t _data, cs_progress_t _progress) :
+			data(_data),
+			progress(_progress) {}
+
+		TBBBKHelper(TBBBKHelper& obj, tbb::split) :
+			data(obj.data),
+			progress(obj.progress) {}
+
+		void operator()(const tbb::blocked_range<bigid_t>& range) {
+			for (auto v = range.begin(); v != range.end(); ++v) {
+				auto& neighbors = (*data)[v];
+
+				// split neighbors
+				auto splitPoint = find_if(neighbors.begin(), neighbors.end(), [v](bigid_t i){return i>v;});
+				set<bigid_t> p(splitPoint, neighbors.end());
+				set<bigid_t> x(neighbors.begin(), splitPoint);
+
+				// prepare r
+				list<bigid_t> r({v});
+
+				// shoot and merge
+				result.splice(result.end(), bronKerboschPivot(move(p), move(r), move(x), data));
+
+				// report progress
+				bigid_t pr = (*this->progress)++;
+				if (pr % 100 == 0) {
+					cout << pr << flush;
+				} else if (pr % 10 == 0) {
+					cout << "." << flush;
+				}
+			}
+		}
+
+		void join(TBBBKHelper& obj) {
+			this->result.splice(this->result.end(), obj.result);
+		}
+
+	private:
+		cs_workdata_t data;
+		cs_progress_t progress;
+};
+
 list<list<bigid_t>> bronKerboschDegeneracy(graph_t data) {
 	cout << "Search cliques: " << flush;
-	list<list<bigid_t>> result;
 	unique_ptr<cs_workdataobj_t> workdata(createWorkdata(data));
+	unique_ptr<cs_progressobj_t> progress(new cs_progressobj_t(0));
 
-	for (bigid_t v = 0; v < static_cast<bigid_t>(workdata->size()); ++v) {
-		auto& neighbors = (*workdata)[v];
+	TBBBKHelper helper(workdata.get(), progress.get());
+	parallel_reduce(tbb::blocked_range<bigid_t>(0, static_cast<bigid_t>(workdata->size())), helper);
 
-		// split neighbors
-		auto splitPoint = find_if(neighbors.begin(), neighbors.end(), [v](bigid_t i){return i>v;});
-		set<bigid_t> p(splitPoint, neighbors.end());
-		set<bigid_t> x(neighbors.begin(), splitPoint);
+	cout << "done (found " << helper.result.size() << " cliques)" << endl;
 
-		// prepare r
-		list<bigid_t> r({v});
-
-		// shoot and merge
-		result.splice(result.end(), bronKerboschPivot(move(p), move(r), move(x), workdata.get()));
-
-		// report progress
-		if (v % 100 == 0) {
-			cout << v << flush;
-		} else if (v % 10 == 0) {
-			cout << "." << flush;
-		}
-	}
-
-	cout << "done (found " << result.size() << " cliques)" << endl;
-
-	return result;
+	return helper.result;
 }
 
