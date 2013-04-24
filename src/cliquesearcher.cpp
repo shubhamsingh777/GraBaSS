@@ -43,10 +43,11 @@ inline void testDifference(long& winnerValue, list<bigid_t>& recursionElements, 
 	}
 }
 
-list<list<bigid_t>> bronKerboschPivot(set<bigid_t>&& p, list<bigid_t>&& r, set<bigid_t>&& x, cs_workdata_t data) {
-	list<list<bigid_t>> result;
+list<vector<bigid_t>> bronKerboschPivot(set<bigid_t>&& p, vector<bigid_t>&& r, set<bigid_t>&& x, cs_workdata_t data) {
+	list<vector<bigid_t>> result;
 
 	if (p.empty() && x.empty()) {
+		r.shrink_to_fit();
 		result.push_back(r);
 	} else {
 		// choose pivot
@@ -66,7 +67,7 @@ list<list<bigid_t>> bronKerboschPivot(set<bigid_t>&& p, list<bigid_t>&& r, set<b
 			// build p, r, x
 			set<bigid_t> pNew;
 			set_intersection(p.begin(), p.end(), neighbors.begin(), neighbors.end(), inserter(pNew, pNew.end()));
-			list<bigid_t> rNew(r);
+			vector<bigid_t> rNew(r);
 			rNew.push_back(v);
 			set<bigid_t> xNew;
 			set_intersection(x.begin(), x.end(), neighbors.begin(), neighbors.end(), inserter(xNew, xNew.end()));
@@ -85,7 +86,7 @@ list<list<bigid_t>> bronKerboschPivot(set<bigid_t>&& p, list<bigid_t>&& r, set<b
 
 class TBBBKHelper {
 	public:
-		list<list<bigid_t>> result;
+		list<vector<bigid_t>> result;
 
 		TBBBKHelper(cs_workdata_t _data, cs_progress_t _progress) :
 			data(_data),
@@ -105,7 +106,7 @@ class TBBBKHelper {
 				set<bigid_t> x(neighbors.begin(), splitPoint);
 
 				// prepare r
-				list<bigid_t> r({v});
+				vector<bigid_t> r({v});
 
 				// shoot and merge
 				result.splice(result.end(), bronKerboschPivot(move(p), move(r), move(x), data));
@@ -129,7 +130,7 @@ class TBBBKHelper {
 		cs_progress_t progress;
 };
 
-list<list<bigid_t>> bronKerboschDegeneracy(graph_t data) {
+list<vector<bigid_t>> bronKerboschDegeneracy(graph_t data) {
 	cout << "Search cliques: " << flush;
 	unique_ptr<cs_workdataobj_t> workdata(createWorkdata(data));
 	unique_ptr<cs_progressobj_t> progress(new cs_progressobj_t(0));
