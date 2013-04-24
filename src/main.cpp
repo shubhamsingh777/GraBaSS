@@ -161,6 +161,15 @@ int main(int argc, char **argv) {
 		auto graph = make_shared<Graph>(graphStorage, "phase0");
 		buildGraph(dims, graph, cfgThreshold);
 
+		// cleanup
+		cout << "Cleanup: " << flush;
+		tPhase.reset(new Tracer("cleanup1", tMain));
+		for (auto& d : dims) {
+			d.reset();
+		}
+		db.reset();
+		cout << "done" << endl;
+
 		// calc distance graph
 		if (cfgGraphDist > 1) {
 			tPhase.reset(new Tracer("calcDistGraph", tMain));
