@@ -27,16 +27,7 @@ def build(bld):
 		lib = [
 			'pthread',
 			'tbb'],
-		source = [
-			'src/dbfile.cpp',
-			'src/cliquesearcher.cpp',
-			'src/graph.cpp',
-			'src/graphbuilder.cpp',
-			'src/graphtransformation.cpp',
-			'src/main.cpp',
-			'src/parser.cpp',
-			'src/sys.cpp',
-			'src/tracer.cpp'],
+		source = bld.path.ant_glob('src/*.cpp'),
 		stlib = [
 			'boost_iostreams',
 			'boost_program_options'],
