@@ -4,8 +4,3 @@ build/*
 # input/test data
 *.input
 
-# tmp files
-.lock-*
-*.swp
-.waf-*
-
