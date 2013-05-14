@@ -2,13 +2,14 @@
 #define GRAPHBUILDER_HPP
 
 #include <memory>
+#include <utility>
 #include <vector>
 
-#include "dim.hpp"
-#include "graph.hpp"
+#include "greycore/dim.hpp"
+#include "greycore/wrapper/graph.hpp"
 #include "sys.hpp"
 
-void buildGraph(std::vector<datadim_t> data, std::shared_ptr<Graph> graph, data_t threshold);
+void buildGraph(std::vector<std::pair<datadim_t, mdMap_t>> data, std::shared_ptr<greycore::Graph> graph, data_t threshold);
 
 #endif
 

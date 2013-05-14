@@ -1,15 +1,16 @@
 #ifndef GRAPHTRANSFORMATION_HPP
 #define GRAPHTRANSFORMATION_HPP
 
+#include <memory>
 #include <unordered_map>
 #include <vector>
 
-#include "graph.hpp"
+#include "greycore/wrapper/graph.hpp"
 #include "sys.hpp"
 
-void lookupNeighbors(graph_t input, graph_t output);
-void joinEdges(std::vector<graph_t> input, graph_t output);
-std::unordered_map<bigid_t, bigid_t> sortGraph(graph_t input, graph_t output);
+void lookupNeighbors(std::shared_ptr<greycore::Graph> input, std::shared_ptr<greycore::Graph> output);
+void joinEdges(std::vector<std::shared_ptr<greycore::Graph>> input, std::shared_ptr<greycore::Graph> output);
+std::unordered_map<std::size_t, std::size_t> sortGraph(std::shared_ptr<greycore::Graph> input, std::shared_ptr<greycore::Graph> output);
 
 #endif
 

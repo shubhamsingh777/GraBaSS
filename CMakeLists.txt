@@ -18,9 +18,12 @@ find_package (Boost COMPONENTS iostreams program_options)
 # set include dirs
 include_directories (${Boost_INCLUDE_DIR})
 
+# add extern libs
+add_subdirectory ("extern/greycore")
+include_directories ("extern/greycore/include")
+
 # build/install hugeDim
 aux_source_directory ("src" HGSourceFiles)
 add_executable (hugeDim ${HGSourceFiles})
-target_link_libraries (hugeDim pthread tbb)
-target_link_libraries (hugeDim ${Boost_LIBRARIES})
+target_link_libraries (hugeDim pthread tbb ${Boost_LIBRARIES} greycore)
 

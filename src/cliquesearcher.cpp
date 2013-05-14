@@ -12,19 +12,19 @@
 
 #include "cliquesearcher.hpp"
 
-using namespace std;
+namespace gc = greycore;
 
-typedef vector<vector<bigid_t>> cs_workdataobj_t;
+typedef std::vector<std::vector<std::size_t>> cs_workdataobj_t;
 typedef cs_workdataobj_t* cs_workdata_t;
-typedef atomic<bigid_t> cs_progressobj_t;
+typedef std::atomic<std::size_t> cs_progressobj_t;
 typedef cs_progressobj_t* cs_progress_t;
 
-cs_workdata_t createWorkdata(graph_t graph) {
+cs_workdata_t createWorkdata(std::shared_ptr<gc::Graph> graph) {
 	auto result = new cs_workdataobj_t(graph->getSize());
 
-	for (bigid_t i = 0; i < graph->getSize(); ++i) {
+	for (std::size_t i = 0; i < graph->getSize(); ++i) {
 		auto tmp = graph->get(i);
-		vector<bigid_t> v(tmp.begin(), tmp.end());
+		std::vector<std::size_t> v(tmp.begin(), tmp.end());
 		v.shrink_to_fit();
 		(*result)[i] = move(v);
 	}
@@ -32,9 +32,9 @@ cs_workdata_t createWorkdata(graph_t graph) {
 	return result;
 }
 
-inline void testDifference(long& winnerValue, list<bigid_t>& recursionElements, const set<bigid_t>& p, vector<bigid_t>& neighbors) {
-	list<bigid_t> test;
-	set_difference(p.begin(), p.end(), neighbors.begin(), neighbors.end(), back_inserter(test));
+inline void testDifference(long& winnerValue, std::list<std::size_t>& recursionElements, const std::set<std::size_t>& p, std::vector<std::size_t>& neighbors) {
+	std::list<std::size_t> test;
+	std::set_difference(p.begin(), p.end(), neighbors.begin(), neighbors.end(), back_inserter(test));
 
 	long s = static_cast<long>(test.size());
 	if (s < winnerValue) {
@@ -43,8 +43,8 @@ inline void testDifference(long& winnerValue, list<bigid_t>& recursionElements, 
 	}
 }
 
-list<vector<bigid_t>> bronKerboschPivot(set<bigid_t>&& p, vector<bigid_t>&& r, set<bigid_t>&& x, cs_workdata_t data) {
-	list<vector<bigid_t>> result;
+std::list<std::vector<std::size_t>> bronKerboschPivot(std::set<std::size_t>&& p, std::vector<std::size_t>&& r, std::set<std::size_t>&& x, cs_workdata_t data) {
+	std::list<std::vector<std::size_t>> result;
 
 	if (p.empty() && x.empty()) {
 		r.shrink_to_fit();
@@ -52,7 +52,7 @@ list<vector<bigid_t>> bronKerboschPivot(set<bigid_t>&& p, vector<bigid_t>&& r, s
 	} else {
 		// choose pivot
 		long winnerValue = p.size() + 1;
-		list<bigid_t> recursionElements;
+		std::list<std::size_t> recursionElements;
 		for (auto u : p) {
 			testDifference(winnerValue, recursionElements, p, (*data)[u]);
 		}
@@ -65,12 +65,12 @@ list<vector<bigid_t>> bronKerboschPivot(set<bigid_t>&& p, vector<bigid_t>&& r, s
 			auto& neighbors = (*data)[v];
 
 			// build p, r, x
-			set<bigid_t> pNew;
-			set_intersection(p.begin(), p.end(), neighbors.begin(), neighbors.end(), inserter(pNew, pNew.end()));
-			vector<bigid_t> rNew(r);
+			std::set<std::size_t> pNew;
+			std::set_intersection(p.begin(), p.end(), neighbors.begin(), neighbors.end(), inserter(pNew, pNew.end()));
+			std::vector<std::size_t> rNew(r);
 			rNew.push_back(v);
-			set<bigid_t> xNew;
-			set_intersection(x.begin(), x.end(), neighbors.begin(), neighbors.end(), inserter(xNew, xNew.end()));
+			std::set<std::size_t> xNew;
+			std::set_intersection(x.begin(), x.end(), neighbors.begin(), neighbors.end(), inserter(xNew, xNew.end()));
 
 			// call recursive function and store results
 			result.splice(result.end(), bronKerboschPivot(move(pNew), move(rNew), move(xNew), data));
@@ -86,7 +86,7 @@ list<vector<bigid_t>> bronKerboschPivot(set<bigid_t>&& p, vector<bigid_t>&& r, s
 
 class TBBBKHelper {
 	public:
-		list<vector<bigid_t>> result;
+		std::list<std::vector<std::size_t>> result;
 
 		TBBBKHelper(cs_workdata_t _data, cs_progress_t _progress) :
 			data(_data),
@@ -96,27 +96,27 @@ class TBBBKHelper {
 			data(obj.data),
 			progress(obj.progress) {}
 
-		void operator()(const tbb::blocked_range<bigid_t>& range) {
+		void operator()(const tbb::blocked_range<std::size_t>& range) {
 			for (auto v = range.begin(); v != range.end(); ++v) {
 				auto& neighbors = (*data)[v];
 
 				// split neighbors
-				auto splitPoint = find_if(neighbors.begin(), neighbors.end(), [v](bigid_t i){return i>v;});
-				set<bigid_t> p(splitPoint, neighbors.end());
-				set<bigid_t> x(neighbors.begin(), splitPoint);
+				auto splitPoint = std::find_if(neighbors.begin(), neighbors.end(), [v](std::size_t i){return i>v;});
+				std::set<std::size_t> p(splitPoint, neighbors.end());
+				std::set<std::size_t> x(neighbors.begin(), splitPoint);
 
 				// prepare r
-				vector<bigid_t> r({v});
+				std::vector<std::size_t> r({v});
 
 				// shoot and merge
 				result.splice(result.end(), bronKerboschPivot(move(p), move(r), move(x), data));
 
 				// report progress
-				bigid_t pr = (*this->progress)++;
+				std::size_t pr = (*this->progress)++;
 				if (pr % 100 == 0) {
-					cout << pr << flush;
+					std::cout << pr << std::flush;
 				} else if (pr % 10 == 0) {
-					cout << "." << flush;
+					std::cout << "." << std::flush;
 				}
 			}
 		}
@@ -130,15 +130,15 @@ class TBBBKHelper {
 		cs_progress_t progress;
 };
 
-list<vector<bigid_t>> bronKerboschDegeneracy(graph_t data) {
-	cout << "Search cliques: " << flush;
-	unique_ptr<cs_workdataobj_t> workdata(createWorkdata(data));
-	unique_ptr<cs_progressobj_t> progress(new cs_progressobj_t(0));
+std::list<std::vector<std::size_t>> bronKerboschDegeneracy(std::shared_ptr<gc::Graph> data) {
+	std::cout << "Search cliques: " << std::flush;
+	std::unique_ptr<cs_workdataobj_t> workdata(createWorkdata(data));
+	std::unique_ptr<cs_progressobj_t> progress(new cs_progressobj_t(0));
 
 	TBBBKHelper helper(workdata.get(), progress.get());
-	parallel_reduce(tbb::blocked_range<bigid_t>(0, static_cast<bigid_t>(workdata->size())), helper);
+	parallel_reduce(tbb::blocked_range<std::size_t>(0, workdata->size()), helper);
 
-	cout << "done (found " << helper.result.size() << " cliques)" << endl;
+	std::cout << "done (found " << helper.result.size() << " cliques)" << std::endl;
 
 	return helper.result;
 }

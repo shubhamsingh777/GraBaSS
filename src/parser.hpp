@@ -5,15 +5,17 @@
 #include <string>
 #include <vector>
 
-#include "dbfile.hpp"
-#include "dim.hpp"
+#include "sys.hpp"
+
+#include "greycore/database.hpp"
+#include "greycore/dim.hpp"
 
 struct ParseResult {
 	std::vector<datadim_t> dims;
 	long nRows;
 };
 
-ParseResult parse(std::shared_ptr<DBFile> target, std::string fname);
+ParseResult parse(std::shared_ptr<greycore::Database> target, std::string fname);
 
 #endif
 

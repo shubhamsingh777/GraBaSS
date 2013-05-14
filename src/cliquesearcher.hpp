@@ -2,12 +2,13 @@
 #define CLIQUESEARCHER_HPP
 
 #include <list>
+#include <memory>
 #include <vector>
 
-#include "graph.hpp"
+#include "greycore/wrapper/graph.hpp"
 #include "sys.hpp"
 
-std::list<std::vector<bigid_t>> bronKerboschDegeneracy(graph_t data);
+std::list<std::vector<std::size_t>> bronKerboschDegeneracy(std::shared_ptr<greycore::Graph> data);
 
 #endif
 

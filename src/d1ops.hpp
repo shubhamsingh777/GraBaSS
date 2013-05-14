@@ -1,44 +1,48 @@
 #ifndef D1OPS_HPP
 #define D1OPS_HPP
 
-#include "dim.hpp"
+#include "greycore/dim.hpp"
+#include "greycore/wrapper/flatmap.hpp"
 
 #include <cmath>
 #include <iostream>
 #include <map>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 // master op
 template <typename T, typename M, int ID, typename EXE>
 struct D1Op {
-	static M calc(std::shared_ptr<Dim<T,M>> dim) {
-		return EXE::run(dim);
+	typedef greycore::Flatmap<int, M> map_t;
+
+	static M calc(std::shared_ptr<greycore::Dim<T>> dim, std::shared_ptr<map_t> map) {
+		return EXE::run(dim, map);
 	}
 
-	static M calcAndStore(std::shared_ptr<Dim<T,M>> dim) {
-		M x = calc(dim);
-		dim->addMetadata(ID, x);
+	static M calcAndStore(std::shared_ptr<greycore::Dim<T>> dim, std::shared_ptr<map_t> map) {
+		M x = calc(dim, map);
+		map->add(ID, x);
 		return x;
 	}
 
-	static void calcAndStoreVector(std::vector<std::shared_ptr<Dim<T,M>>> dims) {
+	static void calcAndStoreVector(std::vector<std::pair<std::shared_ptr<greycore::Dim<T>>, std::shared_ptr<map_t>>> dims) {
 		std::cout << "Calc " << EXE::getName() << ": " << std::flush;
 
 		// test if there is already a cached version
 		if (!dims.empty()) {
 			try {
-				(*dims.begin())->getMetadata(ID);
+				(*dims.begin()).second->get(ID);
 				std::cout << "skipped" << std::endl;
 				return;
-			} catch (const std::runtime_error& e) {
+			} catch (const std::out_of_range& e) {
 				// noop, just continue with calculation
 			}
 		}
 
 		for (unsigned long i = 0; i < dims.size(); ++i) {
-			calcAndStore(dims[i]);
+			calcAndStore(dims[i].first, dims[i].second);
 
 			if (i % 100 == 0) {
 				std::cout << "." << std::flush;
@@ -55,13 +59,13 @@ struct D1Op {
 		return EXE::getName();
 	}
 
-	static M getResult(std::shared_ptr<Dim<T,M>> dim) {
+	static M getResult(std::shared_ptr<greycore::Dim<T>> dim, std::shared_ptr<map_t> map) {
 		M result;
 		try {
-			result = dim->getMetadata(ID);
-		} catch (const std::runtime_error& e) {
+			result = map->get(ID);
+		} catch (const std::out_of_range& e) {
 			// not calculated yet
-			result = calcAndStore(dim);
+			result = calcAndStore(dim, map);
 		}
 		return result;
 	}
@@ -88,15 +92,17 @@ struct D1Ops {
 // real code
 template <typename T, typename M>
 struct _D1OpExp {
-	static M run(std::shared_ptr<Dim<T,M>> dim) {
+	typedef greycore::Flatmap<int, M> map_t;
+
+	static M run(std::shared_ptr<greycore::Dim<T>> dim, std::shared_ptr<map_t>) {
 		M sum = 0;
 
 		long nSegments = dim->getSegmentCount();
 		for (long segment = 0; segment < nSegments; ++segment) {
 			long size = dim->getSegmentFillSize(segment);
-			T* data = dim->getRawSegment(segment);
+			typename greycore::Dim<T>::segment_t* data = dim->getSegment(segment);
 			for (long i = 0; i < size; ++i) {
-				sum += data[i];
+				sum += (*data)[i];
 			}
 		}
 		return sum / dim->getSize();
@@ -109,16 +115,18 @@ struct _D1OpExp {
 
 template <typename T, typename M>
 struct _D1OpVar {
-	static M run(std::shared_ptr<Dim<T,M>> dim) {
-		M exp = D1Ops<T,M>::Exp::getResult(dim);
+	typedef greycore::Flatmap<int, M> map_t;
+
+	static M run(std::shared_ptr<greycore::Dim<T>> dim, std::shared_ptr<map_t> map) {
+		M exp = D1Ops<T,M>::Exp::getResult(dim, map);
 		M sum = 0;
 
 		long nSegments = dim->getSegmentCount();
 		for (long segment = 0; segment < nSegments; ++segment) {
 			long size = dim->getSegmentFillSize(segment);
-			T* data = dim->getRawSegment(segment);
+			typename greycore::Dim<T>::segment_t* data = dim->getSegment(segment);
 			for (long i = 0; i < size; ++i) {
-				M x = data[i] - exp;
+				M x = (*data)[i] - exp;
 				sum += x * x;
 			}
 		}
@@ -132,8 +140,10 @@ struct _D1OpVar {
 
 template <typename T, typename M>
 struct _D1OpStdDev {
-	static M run(std::shared_ptr<Dim<T,M>> dim) {
-		M var = D1Ops<T,M>::Var::getResult(dim);
+	typedef greycore::Flatmap<int, M> map_t;
+
+	static M run(std::shared_ptr<greycore::Dim<T>> dim, std::shared_ptr<map_t> map) {
+		M var = D1Ops<T,M>::Var::getResult(dim, map);
 		return sqrt(var);
 	}
 

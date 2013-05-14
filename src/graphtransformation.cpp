@@ -3,38 +3,38 @@
 
 #include "graphtransformation.hpp"
 
-using namespace std;
+namespace gc = greycore;
 
-void lookupNeighbors(graph_t input, graph_t output) {
+void lookupNeighbors(std::shared_ptr<gc::Graph> input, std::shared_ptr<gc::Graph> output) {
 	assert(output->getSize() == 0);
 
-	for (bigid_t v = 0; v < input->getSize(); ++v) {
-		unordered_set<bigid_t> neighborsNew;
+	for (std::size_t v = 0; v < input->getSize(); ++v) {
+		std::unordered_set<std::size_t> neighborsNew;
 
 		for (auto w : input->get(v)) {
 			auto tmp = input->get(w);
 			neighborsNew.insert(tmp.begin(), tmp.end());
 		}
 
-		list<bigid_t> l(neighborsNew.begin(), neighborsNew.end());
+		std::list<std::size_t> l(neighborsNew.begin(), neighborsNew.end());
 		output->add(move(l));
 
 		// report progress
 		if (v % 1000 == 0) {
-			cout << v << flush;
+			std::cout << v << std::flush;
 		} else if (v % 100 == 0) {
-			cout << "." << flush;
+			std::cout << "." << std::flush;
 		}
 	}
 }
 
-void joinEdges(vector<graph_t> input, graph_t output) {
+void joinEdges(std::vector<std::shared_ptr<gc::Graph>> input, std::shared_ptr<gc::Graph> output) {
 	assert(output->getSize() == 0);
 	assert(!input.empty());
 
-	bigid_t size = (*input.begin())->getSize();
-	for (bigid_t v = 0; v < size; ++v) {
-		unordered_set<bigid_t> neighborsNew;
+	std::size_t size = (*input.begin())->getSize();
+	for (std::size_t v = 0; v < size; ++v) {
+		std::unordered_set<std::size_t> neighborsNew;
 
 		for (auto g : input) {
 			auto tmp = g->get(v);
@@ -44,43 +44,43 @@ void joinEdges(vector<graph_t> input, graph_t output) {
 		// remove self reference
 		neighborsNew.erase(v);
 
-		list<bigid_t>l (neighborsNew.begin(), neighborsNew.end());
+		std::list<std::size_t> l(neighborsNew.begin(), neighborsNew.end());
 		output->add(move(l));
 
 		// report progress
 		if (v % 1000 == 0) {
-			cout << v << flush;
+			std::cout << v << std::flush;
 		} else if (v % 100 == 0) {
-			cout << "." << flush;
+			std::cout << "." << std::flush;
 		}
 	}
 }
 
 struct vertex_t {
-	bigid_t id;
-	unordered_set<bigid_t> neighbors;
+	std::size_t id;
+	std::unordered_set<std::size_t> neighbors;
 };
 
-unordered_map<bigid_t, bigid_t> sortGraph(graph_t input, graph_t output) {
+std::unordered_map<std::size_t, std::size_t> sortGraph(std::shared_ptr<gc::Graph> input, std::shared_ptr<gc::Graph> output) {
 	assert(output->getSize() == 0);
-	cout << "Sort graph: " << flush;
-	unordered_map<bigid_t, bigid_t> idMap;
-	unordered_map<bigid_t, bigid_t> idMapRev;
+	std::cout << "Sort graph: " << std::flush;
+	std::unordered_map<std::size_t, std::size_t> idMap;
+	std::unordered_map<std::size_t, std::size_t> idMapRev;
 
 	// detect maximum number of neighbors
 	long maxNeighbors = 0;
-	for (bigid_t i = 0; i < input->getSize(); ++i) {
-		maxNeighbors = max(maxNeighbors, static_cast<long>(input->get(i).size()));
+	for (std::size_t i = 0; i < input->getSize(); ++i) {
+		maxNeighbors = std::max(maxNeighbors, static_cast<long>(input->get(i).size()));
 	}
 
 	// build initial bins
-	vector<vector<vertex_t*>> bins(maxNeighbors + 1);
-	for (bigid_t i = 0; i < input->getSize(); ++i) {
-		list<bigid_t> tmp = input->get(i);
+	std::vector<std::vector<vertex_t*>> bins(maxNeighbors + 1);
+	for (std::size_t i = 0; i < input->getSize(); ++i) {
+		std::list<std::size_t> tmp = input->get(i);
 
 		bins[tmp.size()].push_back(new vertex_t({
 				i,
-				unordered_set<bigid_t>(tmp.begin(), tmp.end())})
+				std::unordered_set<std::size_t>(tmp.begin(), tmp.end())})
 			);
 	}
 	int binMarker = 0;
@@ -97,7 +97,7 @@ unordered_map<bigid_t, bigid_t> sortGraph(graph_t input, graph_t output) {
 
 		// get+remove first element from bin
 		auto iter = --bins[binMarker].end();
-		bigid_t element = (*iter)->id;
+		std::size_t element = (*iter)->id;
 		delete (*iter);
 		bins[binMarker].erase(iter);
 
@@ -105,11 +105,11 @@ unordered_map<bigid_t, bigid_t> sortGraph(graph_t input, graph_t output) {
 		idMap[element] =  counter;
 		idMapRev[counter] = element;
 		++counter;
-		d = max(d, binMarker);
-		binMarker = max(0, binMarker - 1);
+		d = std::max(d, binMarker);
+		binMarker = std::max(0, binMarker - 1);
 
 		// create new bins
-		vector<vector<vertex_t*>> binsNext(maxNeighbors + 1);
+		std::vector<std::vector<vertex_t*>> binsNext(maxNeighbors + 1);
 		for (auto bin : bins) {
 			for (auto v : bin) {
 				// delete edges to current element
@@ -123,19 +123,19 @@ unordered_map<bigid_t, bigid_t> sortGraph(graph_t input, graph_t output) {
 
 		// report progress
 		if (counter % 1000 == 0) {
-			cout << counter << flush;
+			std::cout << counter << std::flush;
 		} else if (counter % 100 == 0) {
-			cout << "." << flush;
+			std::cout << "." << std::flush;
 		}
 	}
 
 	// write output
-	for (int i = 0; i < input->getSize(); ++i) {
+	for (std::size_t i = 0; i < input->getSize(); ++i) {
 		// lookup old element id
-		bigid_t iOld = idMapRev[i];
+		std::size_t iOld = idMapRev[i];
 
 		// lookup new neighbor ids
-		list<bigid_t> neighborsNew;
+		std::list<std::size_t> neighborsNew;
 		for (auto neighbor : input->get(iOld)) {
 			neighborsNew.push_back(idMap[neighbor]);
 		}
@@ -148,7 +148,7 @@ unordered_map<bigid_t, bigid_t> sortGraph(graph_t input, graph_t output) {
 	}
 
 	// done
-	cout << "done (maxNeighbors=" << maxNeighbors << ", d=" << d << ")" << endl;
+	std::cout << "done (maxNeighbors=" << maxNeighbors << ", d=" << d << ")" << std::endl;
 
 	return idMapRev;
 }

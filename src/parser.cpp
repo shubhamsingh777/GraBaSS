@@ -1,4 +1,4 @@
-#include "dim.hpp"
+#include "greycore/dim.hpp"
 #include "parser.hpp"
 
 #include <boost/iostreams/device/mapped_file.hpp>
@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+namespace gc = greycore;
 namespace qi = boost::spirit::qi;
 
 using namespace boost::iostreams;
@@ -20,7 +21,7 @@ string genDimName(int n) {
 	return buffer.str();
 }
 
-ParseResult parse(shared_ptr<DBFile> target, string fname) {
+ParseResult parse(shared_ptr<gc::Database> target, string fname) {
 	ParseResult result;
 	result.nRows = 0;
 
@@ -35,7 +36,7 @@ ParseResult parse(shared_ptr<DBFile> target, string fname) {
 		if (start > 0) {
 			// create dimension
 			string dName = genDimName(n);
-			result.dims.push_back(datadim_t(new datadimobj_t(target, dName)));
+			result.dims.push_back(target->createDim<data_t>(dName));
 
 			// log
 			if (n % 100 == 0) {

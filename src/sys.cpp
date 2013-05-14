@@ -3,13 +3,12 @@
 
 #include "sys.hpp"
 
-using namespace boost::interprocess;
-using namespace std;
+namespace bi = boost::interprocess;
 
 template <typename T>
-bool check(string name, T is, T should) {
+bool check(std::string name, T is, T should) {
 	if (is != should) {
-		cout << "Warning: " << name << " should be " << should << " (current config: " << is << ")" << endl;
+		std::cout << "Warning: " << name << " should be " << should << " (current config: " << is << ")" << std::endl;
 		return false;
 	} else {
 		return true;
@@ -19,7 +18,7 @@ bool check(string name, T is, T should) {
 bool checkConfig() {
 	bool result = true;
 
-	result &= check("pageSize", PAGE_SIZE, mapped_region::get_page_size());
+	result &= check("pageSize", PAGE_SIZE, bi::mapped_region::get_page_size());
 
 	return result;
 }
