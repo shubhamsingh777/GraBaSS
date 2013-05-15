@@ -152,13 +152,9 @@ int main(int argc, char **argv) {
 		// build pairs
 		std::vector<std::pair<datadim_t, mdMap_t>> dimsWithMd(dims.size());
 		for (auto d : dims) {
-			std::shared_ptr<mdMapObj_t::dim_t> tmp;
-			try {
-				tmp = dbMetadata->createDim<mdMapObj_t::dim_t::payload_t>(d->getName());
-			} catch (const std::runtime_error& e) {
-				tmp = dbMetadata->getDim<mdMapObj_t::dim_t::payload_t>(d->getName());
-			}
-			auto map = std::make_shared<mdMapObj_t>(tmp);
+			auto dimPtr = dbMetadata->createDim<mdMapObj_t::dim_t::payload_t>(d->getName());
+;
+			auto map = std::make_shared<mdMapObj_t>(dimPtr);
 			dimsWithMd.push_back(std::make_pair(d, map));
 		}
 
