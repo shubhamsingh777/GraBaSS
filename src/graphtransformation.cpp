@@ -1,9 +1,63 @@
+#include <iostream>
 #include <unordered_set>
 #include <utility>
+#include <vector>
 
 #include "graphtransformation.hpp"
 
 namespace gc = greycore;
+
+inline double getConnectionRate(const std::vector<std::unordered_set<std::size_t>>& data, std::size_t v, std::size_t w) {
+	std::size_t count = 0;
+	auto neighbors = data.at(v);
+
+	for (auto x : neighbors) {
+		auto tmp = data.at(x);
+		if (tmp.find(w) != tmp.end()) {
+			++count;
+		}
+	}
+
+	return static_cast<double>(count) / static_cast<double>(neighbors.size());
+}
+
+void bidirLookup(std::shared_ptr<gc::Graph> input, std::shared_ptr<gc::Graph> output, double threshold) {
+	assert(output->getSize() == 0);
+
+	// build lookup table
+	std::vector<std::unordered_set<std::size_t>> lookupTable(input->getSize());
+	for (std::size_t v = 0; v < input->getSize(); ++v) {
+		auto neighbors = input->get(v);
+		lookupTable[v].insert(neighbors.begin(), neighbors.end());
+	}
+
+	// for all vertices
+	for (std::size_t v = 0; v < input->getSize(); ++v) {
+		std::unordered_set<std::size_t> neighborsNew;
+
+		// for every neighbor
+		for (auto w : input->get(v)) {
+			neighborsNew.insert(w);
+
+			// check every 2nd generation neighbor
+			for (auto x : input->get(w)) {
+				if ((getConnectionRate(lookupTable, v, x) >= threshold) && (getConnectionRate(lookupTable, x, v) >= threshold)) {
+					neighborsNew.insert(x);
+				}
+			}
+		}
+
+		std::list<std::size_t> l(neighborsNew.begin(), neighborsNew.end());
+		output->add(std::move(l));
+
+		// report progress
+		if (v % 1000 == 0) {
+			std::cout << v << std::flush;
+		} else if (v % 100 == 0) {
+			std::cout << "." << std::flush;
+		}
+	}
+}
 
 void lookupNeighbors(std::shared_ptr<gc::Graph> input, std::shared_ptr<gc::Graph> output) {
 	assert(output->getSize() == 0);
@@ -17,7 +71,7 @@ void lookupNeighbors(std::shared_ptr<gc::Graph> input, std::shared_ptr<gc::Graph
 		}
 
 		std::list<std::size_t> l(neighborsNew.begin(), neighborsNew.end());
-		output->add(move(l));
+		output->add(std::move(l));
 
 		// report progress
 		if (v % 1000 == 0) {

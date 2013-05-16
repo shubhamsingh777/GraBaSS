@@ -32,7 +32,8 @@ int main(int argc, char **argv) {
 	std::string cfgDbData;
 	std::string cfgDbMetadata;
 	std::string cfgDbGraph;
-	data_t cfgThreshold;
+	data_t cfgThresholdGen;
+	data_t cfgThresholdGraph;
 	bool cfgForce;
 	std::size_t cfgGraphDist;
 	std::size_t cfgThreads;
@@ -66,9 +67,14 @@ int main(int argc, char **argv) {
 			"DB file that stores generated and transformed graphs"
 		)
 		(
-			"threshold",
-			po::value(&cfgThreshold)->default_value(0.4, "0.4"),
+			"thresholdGen",
+			po::value(&cfgThresholdGen)->default_value(0.4, "0.4"),
 			"Threshold for graph edge generation"
+		)
+				(
+			"thresholdGraph",
+			po::value(&cfgThresholdGraph)->default_value(0.0, "0.0"),
+			"Threshold for distance graph generation"
 		)
 		(
 			"graphDist",
@@ -175,7 +181,7 @@ int main(int argc, char **argv) {
 		// build graph from data
 		tPhase.reset(new Tracer("buildGraph", tMain));
 		auto graph = std::make_shared<gc::Graph>(dbGraph->createDim<std::size_t>("phase0.1"), dbGraph->createDim<std::size_t>("phase0.2"));
-		buildGraph(dimsWithMd, graph, cfgThreshold);
+		buildGraph(dimsWithMd, graph, cfgThresholdGen);
 
 		// cleanup
 		std::cout << "Cleanup: " << std::flush;
@@ -194,27 +200,35 @@ int main(int argc, char **argv) {
 		// calc distance graph
 		if (cfgGraphDist > 1) {
 			tPhase.reset(new Tracer("calcDistGraph", tMain));
-			std::vector<std::shared_ptr<gc::Graph>> toJoin({graph});
+			std::vector<std::shared_ptr<gc::Graph>> distGraphSteps({graph});
 			auto last = graph;
 
 			for (std::size_t i = 2; i <= cfgGraphDist; ++i) {
 				std::cout << "Calc graph distance " << i << ": " << std::flush;
 				std::stringstream ss;
 				ss << "dist" << i;
-				auto next = std::make_shared<gc::Graph>(dbGraph->createDim<std::size_t>(ss.str() + ".1"), dbGraph->createDim<std::size_t>(ss.str() + ".1"));
+				auto next = std::make_shared<gc::Graph>(dbGraph->createDim<std::size_t>(ss.str() + ".1"), dbGraph->createDim<std::size_t>(ss.str() + ".2"));
 
-				lookupNeighbors(last, next);
+				if (cfgThresholdGraph == 0.0) {
+					lookupNeighbors(last, next);
+				} else {
+					bidirLookup(last, next, cfgThresholdGraph);
+				}
 
-				toJoin.push_back(next);
+				distGraphSteps.push_back(next);
 				last = next;
 				std::cout << "done" << std::endl;
 			}
 
-			std::cout << "Join graphs: " << std::flush;
-			auto distGraph = std::make_shared<gc::Graph>(dbGraph->createDim<std::size_t>("distGraph.1"), dbGraph->createDim<std::size_t>("distGraph.2"));
-			joinEdges(toJoin, distGraph);
-			graph = distGraph;
-			std::cout << "done" << std::endl;
+			if (cfgThresholdGraph == 0.0) {
+				std::cout << "Join graphs: " << std::flush;
+				auto distGraph = std::make_shared<gc::Graph>(dbGraph->createDim<std::size_t>("distGraph.1"), dbGraph->createDim<std::size_t>("distGraph.2"));
+				joinEdges(distGraphSteps, distGraph);
+				graph = distGraph;
+				std::cout << "done" << std::endl;
+			} else {
+				graph = distGraphSteps.back();
+			}
 		}
 
 		// sort graph
