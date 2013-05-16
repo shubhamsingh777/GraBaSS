@@ -57,7 +57,7 @@ int main(int argc, char **argv) {
 		)
 		(
 			"dbmetadata",
-			po::value(&cfgDbData)->default_value("metadata.db"),
+			po::value(&cfgDbMetadata)->default_value("metadata.db"),
 			"DB file that stores calculated metadata for dimensions"
 		)
 		(
@@ -150,10 +150,10 @@ int main(int argc, char **argv) {
 		}
 
 		// build pairs
-		std::vector<std::pair<datadim_t, mdMap_t>> dimsWithMd(dims.size());
+		std::vector<std::pair<datadim_t, mdMap_t>> dimsWithMd;
 		for (auto d : dims) {
 			auto dimPtr = dbMetadata->createDim<mdMapObj_t::dim_t::payload_t>(d->getName());
-;
+
 			auto map = std::make_shared<mdMapObj_t>(dimPtr);
 			dimsWithMd.push_back(std::make_pair(d, map));
 		}
