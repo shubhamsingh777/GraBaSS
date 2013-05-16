@@ -1,6 +1,16 @@
 # build results
-build/*
+build*/*
 
 # input/test data
 *.input
+
+# IDE files
+*.config
+*.creator
+*.files
+*.includes
+
+# tmp file
+*.swp
+*.user
 
