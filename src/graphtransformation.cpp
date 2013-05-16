@@ -7,6 +7,27 @@
 
 namespace gc = greycore;
 
+bool checkBidir(std::shared_ptr<gc::Graph> graph) {
+	for (std::size_t v = 0; v < graph->getSize(); ++v) {
+		for (auto w : graph->get(v)) {
+			bool ok = false;
+
+			for (auto z : graph->get(w)) {
+				if (v == z) {
+					ok = true;
+					break;
+				}
+			}
+
+			if (!ok) {
+				return false;
+			}
+		}
+	}
+
+	return true;
+}
+
 inline double getConnectionRate(const std::vector<std::unordered_set<std::size_t>>& data, std::size_t v, std::size_t w) {
 	std::size_t count = 0;
 	auto neighbors = data.at(v);
@@ -41,7 +62,7 @@ void bidirLookup(std::shared_ptr<gc::Graph> input, std::shared_ptr<gc::Graph> ou
 
 			// check every 2nd generation neighbor
 			for (auto x : input->get(w)) {
-				if ((getConnectionRate(lookupTable, v, x) >= threshold) && (getConnectionRate(lookupTable, x, v) >= threshold)) {
+				if ((v != x) && (getConnectionRate(lookupTable, v, x) >= threshold) && (getConnectionRate(lookupTable, x, v) >= threshold)) {
 					neighborsNew.insert(x);
 				}
 			}

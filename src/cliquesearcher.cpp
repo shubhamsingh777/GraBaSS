@@ -32,11 +32,11 @@ cs_workdata_t createWorkdata(std::shared_ptr<gc::Graph> graph) {
 	return result;
 }
 
-inline void testDifference(long& winnerValue, std::list<std::size_t>& recursionElements, const std::set<std::size_t>& p, std::vector<std::size_t>& neighbors) {
+inline void testDifference(std::size_t& winnerValue, std::list<std::size_t>& recursionElements, const std::set<std::size_t>& p, std::vector<std::size_t>& neighbors) {
 	std::list<std::size_t> test;
 	std::set_difference(p.begin(), p.end(), neighbors.begin(), neighbors.end(), back_inserter(test));
 
-	long s = static_cast<long>(test.size());
+	std::size_t s = test.size();
 	if (s < winnerValue) {
 		winnerValue = s;
 		recursionElements = move(test);
@@ -51,7 +51,7 @@ std::list<std::vector<std::size_t>> bronKerboschPivot(std::set<std::size_t>&& p,
 		result.push_back(r);
 	} else {
 		// choose pivot
-		long winnerValue = p.size() + 1;
+		std::size_t winnerValue = p.size() + 1;
 		std::list<std::size_t> recursionElements;
 		for (auto u : p) {
 			testDifference(winnerValue, recursionElements, p, (*data)[u]);
