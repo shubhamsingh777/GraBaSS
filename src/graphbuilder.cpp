@@ -34,7 +34,7 @@ class TBBEdgeHelper {
 			for (auto i = range.begin(); i != range.end(); ++i) {
 				auto d2 = (*data)[i].first;
 				auto m2 = (*data)[i].second;
-				data_t x = D2Ops<data_t, data_t>::Pearson::calc(d1, d2, m1, m2);
+				data_t x = D2Ops::Pearson::calc(d1, d2, m1, m2);
 				xMax = std::max(xMax, x);
 				if (x >= threshold) {
 					refs.push_back(i);
@@ -91,7 +91,7 @@ class TBBSearchHelper {
 void buildGraph(std::vector<std::pair<datadim_t, mdMap_t>> data, std::shared_ptr<gc::Graph> graph, data_t threshold) {
 	std::cout << "Build initial graph: " << std::flush;
 
-	typedef D2Ops<data_t, data_t>::Pearson op2;
+	typedef D2Ops::Pearson op2;
 	long edgeCount = 0;
 	data_t xMax = std::numeric_limits<data_t>::lowest();
 

@@ -160,27 +160,26 @@ int main(int argc, char **argv) {
 		for (auto d : dims) {
 			std::shared_ptr<mdMapObj_t::dim_t> dimPtr;
 			try {
-				dimPtr = dbMetadata->createDim<mdMapObj_t::dim_t::payload_t>(d->getName());
+				dimPtr = dbMetadata->createDim<mdMapObj_t::dim_t::payload_t, mdMapObj_t::dim_t::segmentSize>(d->getName());
 			} catch (const std::runtime_error& e) {
-				dimPtr = dbMetadata->getDim<mdMapObj_t::dim_t::payload_t>(d->getName());
+				dimPtr = dbMetadata->getDim<mdMapObj_t::dim_t::payload_t, mdMapObj_t::dim_t::segmentSize>(d->getName());
 			}
 
 			auto map = std::make_shared<mdMapObj_t>(dimPtr);
 			dimsWithMd.push_back(std::make_pair(d, map));
 		}
 
-		typedef D1Ops<data_t, data_t> ops1;
 		{
 			tPhase.reset(new Tracer("precalc", tMain));
 
 			auto tPrecalc = std::make_shared<Tracer>("exp", tPhase);
-			ops1::Exp::calcAndStoreVector(dimsWithMd);
+			D1Ops::Exp::calcAndStoreVector(dimsWithMd);
 
 			tPrecalc.reset(new Tracer("var", tPhase));
-			ops1::Var::calcAndStoreVector(dimsWithMd);
+			D1Ops::Var::calcAndStoreVector(dimsWithMd);
 
 			tPrecalc.reset(new Tracer("stdDev", tPhase));
-			ops1::StdDev::calcAndStoreVector(dimsWithMd);
+			D1Ops::StdDev::calcAndStoreVector(dimsWithMd);
 		}
 
 		// build graph from data

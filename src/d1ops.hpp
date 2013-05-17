@@ -3,6 +3,7 @@
 
 #include "greycore/dim.hpp"
 #include "greycore/wrapper/flatmap.hpp"
+#include "sys.hpp"
 
 #include <cmath>
 #include <iostream>
@@ -13,21 +14,19 @@
 #include <vector>
 
 // master op
-template <typename T, typename M, int ID, typename EXE>
+template <int ID, typename EXE>
 struct D1Op {
-	typedef greycore::Flatmap<int, M> map_t;
-
-	static M calc(std::shared_ptr<greycore::Dim<T>> dim, std::shared_ptr<map_t> map) {
+	static data_t calc(datadim_t dim, mdMap_t map) {
 		return EXE::run(dim, map);
 	}
 
-	static M calcAndStore(std::shared_ptr<greycore::Dim<T>> dim, std::shared_ptr<map_t> map) {
-		M x = calc(dim, map);
+	static data_t calcAndStore(datadim_t dim, mdMap_t map) {
+		data_t x = calc(dim, map);
 		map->add(ID, x);
 		return x;
 	}
 
-	static void calcAndStoreVector(std::vector<std::pair<std::shared_ptr<greycore::Dim<T>>, std::shared_ptr<map_t>>> dims) {
+	static void calcAndStoreVector(std::vector<std::pair<datadim_t, mdMap_t>> dims) {
 		std::cout << "Calc " << EXE::getName() << ": " << std::flush;
 
 		// test if there is already a cached version
@@ -41,7 +40,7 @@ struct D1Op {
 			}
 		}
 
-		for (unsigned long i = 0; i < dims.size(); ++i) {
+		for (std::size_t i = 0; i < dims.size(); ++i) {
 			calcAndStore(dims[i].first, dims[i].second);
 
 			if (i % 100 == 0) {
@@ -59,8 +58,8 @@ struct D1Op {
 		return EXE::getName();
 	}
 
-	static M getResult(std::shared_ptr<greycore::Dim<T>> dim, std::shared_ptr<map_t> map) {
-		M result;
+	static data_t getResult(datadim_t dim, mdMap_t map) {
+		data_t result;
 		try {
 			result = map->get(ID);
 		} catch (const std::out_of_range& e) {
@@ -72,36 +71,27 @@ struct D1Op {
 };
 
 // prototypes
-template <typename T, typename M>
 struct _D1OpExp;
-
-template <typename T, typename M>
 struct _D1OpVar;
-
-template <typename T, typename M>
 struct _D1OpStdDev;
 
 // define ops
-template <typename T, typename M>
 struct D1Ops {
-	using Exp = D1Op<T, M, 1, _D1OpExp<T,M>>;
-	using Var = D1Op<T, M, 2, _D1OpVar<T,M>>;
-	using StdDev = D1Op<T, M, 3, _D1OpStdDev<T,M>>;
+	using Exp = D1Op<1, _D1OpExp>;
+	using Var = D1Op<2, _D1OpVar>;
+	using StdDev = D1Op<3, _D1OpStdDev>;
 };
 
 // real code
-template <typename T, typename M>
 struct _D1OpExp {
-	typedef greycore::Flatmap<int, M> map_t;
+	static data_t run(datadim_t dim, mdMap_t) {
+		data_t sum = 0;
 
-	static M run(std::shared_ptr<greycore::Dim<T>> dim, std::shared_ptr<map_t>) {
-		M sum = 0;
-
-		long nSegments = dim->getSegmentCount();
-		for (long segment = 0; segment < nSegments; ++segment) {
-			long size = dim->getSegmentFillSize(segment);
-			typename greycore::Dim<T>::segment_t* data = dim->getSegment(segment);
-			for (long i = 0; i < size; ++i) {
+		std::size_t nSegments = dim->getSegmentCount();
+		for (std::size_t segment = 0; segment < nSegments; ++segment) {
+			std::size_t size = dim->getSegmentFillSize(segment);
+			typename datadimObj_t::segment_t* data = dim->getSegment(segment);
+			for (std::size_t i = 0; i < size; ++i) {
 				sum += (*data)[i];
 			}
 		}
@@ -113,20 +103,17 @@ struct _D1OpExp {
 	}
 };
 
-template <typename T, typename M>
 struct _D1OpVar {
-	typedef greycore::Flatmap<int, M> map_t;
+	static data_t run(datadim_t dim, mdMap_t map) {
+		data_t exp = D1Ops::Exp::getResult(dim, map);
+		data_t sum = 0;
 
-	static M run(std::shared_ptr<greycore::Dim<T>> dim, std::shared_ptr<map_t> map) {
-		M exp = D1Ops<T,M>::Exp::getResult(dim, map);
-		M sum = 0;
-
-		long nSegments = dim->getSegmentCount();
-		for (long segment = 0; segment < nSegments; ++segment) {
-			long size = dim->getSegmentFillSize(segment);
-			typename greycore::Dim<T>::segment_t* data = dim->getSegment(segment);
-			for (long i = 0; i < size; ++i) {
-				M x = (*data)[i] - exp;
+		std::size_t nSegments = dim->getSegmentCount();
+		for (std::size_t segment = 0; segment < nSegments; ++segment) {
+			std::size_t size = dim->getSegmentFillSize(segment);
+			typename datadimObj_t::segment_t* data = dim->getSegment(segment);
+			for (std::size_t i = 0; i < size; ++i) {
+				data_t x = (*data)[i] - exp;
 				sum += x * x;
 			}
 		}
@@ -138,12 +125,9 @@ struct _D1OpVar {
 	}
 };
 
-template <typename T, typename M>
 struct _D1OpStdDev {
-	typedef greycore::Flatmap<int, M> map_t;
-
-	static M run(std::shared_ptr<greycore::Dim<T>> dim, std::shared_ptr<map_t> map) {
-		M var = D1Ops<T,M>::Var::getResult(dim, map);
+	static data_t run(datadim_t dim, mdMap_t map) {
+		std::size_t var = D1Ops::Var::getResult(dim, map);
 		return sqrt(var);
 	}
 
