@@ -52,17 +52,18 @@ void bidirLookup(std::shared_ptr<gc::Graph> input, std::shared_ptr<gc::Graph> ou
 		lookupTable[v].insert(neighbors.begin(), neighbors.end());
 	}
 
-	// setup cache
+	// build cache
 	std::vector<std::unordered_set<std::size_t>> cache(input->getSize());
 
 	// for all vertices
 	for (std::size_t v = 0; v < input->getSize(); ++v) {
-		auto& neighborsNew = cache[v];
 		auto neighbors = input->get(v);
+		auto& neighborsNew = cache[v];
 		neighborsNew.insert(neighbors.begin(), neighbors.end());
+		std::unordered_set<std::size_t> checked(neighbors.begin(), neighbors.end());
 
 		// for every neighbor
-		for (auto w : input->get(v)) {
+		for (auto w : neighbors) {
 			// check every 2nd generation neighbor
 			for (auto x : input->get(w)) {
 				// a new neighbor?
@@ -75,9 +76,10 @@ void bidirLookup(std::shared_ptr<gc::Graph> input, std::shared_ptr<gc::Graph> ou
 						}
 					} else {
 						// insert non equal, well connencted neighbors
-						if ((v != x) && (getConnectionRate(lookupTable, v, x) >= threshold) && (getConnectionRate(lookupTable, x, v) >= threshold)) {
+						if ((v != x) && (checked.find(x) == checked.end()) && (getConnectionRate(lookupTable, v, x) >= threshold) && (getConnectionRate(lookupTable, x, v) >= threshold)) {
 							neighborsNew.insert(x);
 						}
+						checked.insert(x);
 					}
 				}
 			}
