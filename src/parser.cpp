@@ -32,7 +32,7 @@ ParseResult parse(shared_ptr<gc::Database> target, string fname) {
 	int n = 0;
 	int start = 2;
 
-	auto funRest = [&](int i){
+	auto funRest = [&](double i){
 		if (start > 0) {
 			// create dimension
 			string dName = genDimName(n);
@@ -48,7 +48,7 @@ ParseResult parse(shared_ptr<gc::Database> target, string fname) {
 		++n;
 	};
 
-	auto funBegin = [&](int i){
+	auto funBegin = [&](double i){
 		// set start value (used for Dim creation)
 		if (start > 0) {
 			--start;
@@ -69,7 +69,7 @@ ParseResult parse(shared_ptr<gc::Database> target, string fname) {
 		funRest(i);
 	};
 
-	auto grammar = (qi::int_[funBegin] >> *(qi::space >> qi::int_[funRest])) % qi::no_skip[qi::eol];
+	auto grammar = (qi::double_[funBegin] >> *(qi::space >> qi::double_[funRest])) % qi::no_skip[qi::eol];
 	qi::phrase_parse(first, last, grammar, qi::eol);
 
 	return result;
