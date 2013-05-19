@@ -1,4 +1,5 @@
 #include <iostream>
+#include <limits>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -160,9 +161,9 @@ std::unordered_map<std::size_t, std::size_t> sortGraph(std::shared_ptr<gc::Graph
 	std::unordered_map<std::size_t, std::size_t> idMapRev;
 
 	// detect maximum number of neighbors
-	long maxNeighbors = 0;
+	std::size_t maxNeighbors = 0;
 	for (std::size_t i = 0; i < input->getSize(); ++i) {
-		maxNeighbors = std::max(maxNeighbors, static_cast<long>(input->get(i).size()));
+		maxNeighbors = std::max(maxNeighbors, input->get(i).size());
 	}
 
 	// build initial bins
@@ -175,11 +176,11 @@ std::unordered_map<std::size_t, std::size_t> sortGraph(std::shared_ptr<gc::Graph
 				std::unordered_set<std::size_t>(tmp.begin(), tmp.end())})
 			);
 	}
-	int binMarker = 0;
+	std::size_t binMarker = 0;
 
 	// iterate throw all bins
-	long counter = 0;
-	int d = -1;
+	std::size_t counter = 0;
+	std::size_t d = std::numeric_limits<std::size_t>::max();
 	while (binMarker <= maxNeighbors) {
 		// check if current bin contains elements
 		if (bins[binMarker].empty()) {
@@ -197,8 +198,8 @@ std::unordered_map<std::size_t, std::size_t> sortGraph(std::shared_ptr<gc::Graph
 		idMap[element] =  counter;
 		idMapRev[counter] = element;
 		++counter;
-		d = std::max(d, binMarker);
-		binMarker = std::max(0, binMarker - 1);
+		d = (d == std::numeric_limits<std::size_t>::max()) ? binMarker : std::max(d, binMarker);
+		binMarker = std::max(static_cast<std::size_t>(1), binMarker) - 1;
 
 		// create new bins
 		std::vector<std::vector<vertex_t*>> binsNext(maxNeighbors + 1);
