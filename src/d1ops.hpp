@@ -127,7 +127,7 @@ struct _D1OpVar {
 
 struct _D1OpStdDev {
 	static data_t run(datadim_t dim, mdMap_t map) {
-		std::size_t var = D1Ops::Var::getResult(dim, map);
+		data_t var = D1Ops::Var::getResult(dim, map);
 		return sqrt(var);
 	}
 
