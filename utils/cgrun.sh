@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 
-cgexec -g "blkio,cpuset:perftest42$USER" "$@"
+cgexec -g "blkio,cpuset,memory:perftest42$USER" "$@"
 
