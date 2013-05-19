@@ -247,15 +247,25 @@ int main(int argc, char **argv) {
 		// ok, so lets write the results
 		tPhase.reset(new Tracer("output", tMain));
 		std::cout << "Write result: " << std::flush;
+		typedef decltype(*subspaces.begin()) subspace_t;
+		subspaces.sort([](subspace_t a, subspace_t b) {
+					return a.size() < b.size();
+				});
 		for (auto ss : subspaces) {
+			decltype(ss) sorted;
+			std::transform(ss.begin(), ss.end(), std::back_inserter(sorted), [&idMap](std::size_t d){
+						return idMap[d];
+					});
+			std::sort(sorted.begin(), sorted.end());
+
 			bool first = true;
-			for (auto dim : ss) {
+			for (auto dim : sorted) {
 				if (first) {
 					first = false;
 				} else {
 					outfile << ",";
 				}
-				outfile << idMap[dim];
+				outfile << dim;
 			}
 			outfile << std::endl;
 		}
