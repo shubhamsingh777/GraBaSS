@@ -15,7 +15,7 @@ namespace qi = boost::spirit::qi;
 using namespace boost::iostreams;
 using namespace std;
 
-string genDimName(int n) {
+string genDimName(std::size_t n) {
 	stringstream buffer;
 	buffer << n;
 	return buffer.str();
@@ -29,7 +29,7 @@ ParseResult parse(shared_ptr<gc::Database> target, string fname) {
 	auto first = file.begin();
 	auto last = file.end();
 
-	int n = 0;
+	std::size_t n = 0;
 	int start = 2;
 
 	auto funRest = [&](double i){
