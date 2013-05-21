@@ -244,22 +244,35 @@ int main(int argc, char **argv) {
 		tPhase.reset(new Tracer("cliqueSearcher", tMain));
 		auto subspaces = bronKerboschDegeneracy(sortedGraph);
 
+		// lookup final subspace results from idMap
+		decltype(subspaces) result;
+		std::transform(subspaces.begin(), subspaces.end(), std::back_inserter(result), [&idMap](const std::vector<std::size_t>& ss){
+					std::vector<std::size_t> tmp;
+					std::transform(ss.begin(), ss.end(), std::back_inserter(tmp), [&idMap](std::size_t d) {
+							return idMap[d];
+						});
+					std::sort(tmp.begin(), tmp.end());
+					return tmp;
+				});
+		result.sort([](const std::vector<std::size_t>& a, const std::vector<std::size_t>& b){
+					if (a.size() != b.size()) {
+						return a.size() < b.size();
+					} else {
+						for (std::size_t i = 0; i < a.size(); ++i) {
+							if (a[i] != b[i]) {
+								return a[i] < b[i];
+							}
+						}
+						return true;
+					}
+				});
+
 		// ok, so lets write the results
 		tPhase.reset(new Tracer("output", tMain));
 		std::cout << "Write result: " << std::flush;
-		typedef decltype(*subspaces.begin()) subspace_t;
-		subspaces.sort([](subspace_t a, subspace_t b) {
-					return a.size() < b.size();
-				});
-		for (auto ss : subspaces) {
-			decltype(ss) sorted;
-			std::transform(ss.begin(), ss.end(), std::back_inserter(sorted), [&idMap](std::size_t d){
-						return idMap[d];
-					});
-			std::sort(sorted.begin(), sorted.end());
-
+		for (auto ss : result) {
 			bool first = true;
-			for (auto dim : sorted) {
+			for (auto dim : ss) {
 				if (first) {
 					first = false;
 				} else {
