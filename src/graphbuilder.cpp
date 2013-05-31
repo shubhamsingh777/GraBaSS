@@ -4,8 +4,8 @@
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_reduce.h>
 
-#include "d2ops.hpp"
 #include "graphbuilder.hpp"
+#include "dimsimilarity.hpp"
 
 namespace gc = greycore;
 
@@ -14,11 +14,11 @@ class TBBEdgeHelper {
 		data_t xMax;
 		std::list<std::size_t> refs;
 
-		TBBEdgeHelper(datadim_t _d1, mdMap_t _m1, std::vector<std::pair<datadim_t, mdMap_t>> *_data, data_t _threshold) :
+		TBBEdgeHelper(discretedim_t _d1, discretedim_t _bins1, std::vector<std::pair<discretedim_t, discretedim_t>> *_data, data_t _threshold) :
 			xMax(std::numeric_limits<data_t>::lowest()),
 			refs(),
 			d1(_d1),
-			m1(_m1),
+			bins1(_bins1),
 			data(_data),
 			threshold(_threshold) {}
 
@@ -26,15 +26,15 @@ class TBBEdgeHelper {
 			xMax(std::numeric_limits<data_t>::lowest()),
 			refs(),
 			d1(obj.d1),
-			m1(obj.m1),
+			bins1(obj.bins1),
 			data(obj.data),
 			threshold(obj.threshold) {}
 
 		void operator()(const tbb::blocked_range<std::size_t>& range) {
 			for (auto i = range.begin(); i != range.end(); ++i) {
 				auto d2 = (*data)[i].first;
-				auto m2 = (*data)[i].second;
-				data_t x = D2Ops::Pearson::calc(d1, d2, m1, m2);
+				auto bins2 = (*data)[i].second;
+				data_t x = dimsimilarity(d1, bins1, d2, bins2);
 				xMax = std::max(xMax, x);
 				if (x >= threshold) {
 					refs.push_back(i);
@@ -48,9 +48,9 @@ class TBBEdgeHelper {
 		}
 
 	private:
-		datadim_t d1;
-		mdMap_t m1;
-		std::vector<std::pair<datadim_t, mdMap_t>> *data;
+		discretedim_t d1;
+		discretedim_t bins1;
+		std::vector<std::pair<discretedim_t, discretedim_t>> *data;
 		data_t threshold;
 };
 
@@ -88,10 +88,9 @@ class TBBSearchHelper {
 		std::shared_ptr<gc::Graph> graph;
 };
 
-void buildGraph(std::vector<std::pair<datadim_t, mdMap_t>> data, std::shared_ptr<gc::Graph> graph, data_t threshold) {
+void buildGraph(std::vector<std::pair<discretedim_t, discretedim_t>> data, std::shared_ptr<gc::Graph> graph, data_t threshold) {
 	std::cout << "Build initial graph: " << std::flush;
 
-	typedef D2Ops::Pearson op2;
 	long edgeCount = 0;
 	data_t xMax = std::numeric_limits<data_t>::lowest();
 

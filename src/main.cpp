@@ -13,10 +13,10 @@
 #include "sys.hpp"
 #include "graphbuilder.hpp"
 #include "parser.hpp"
-#include "d1ops.hpp"
 #include "cliquesearcher.hpp"
 #include "tracer.hpp"
 #include "graphtransformation.hpp"
+#include "dimtransformation.hpp"
 
 #include "greycore/database.hpp"
 #include "greycore/dim.hpp"
@@ -155,37 +155,44 @@ int main(int argc, char **argv) {
 			std::cout << "done (" << pr.dims.size() << " columns, " << pr.nRows << " rows)" << std::endl;
 		}
 
-		// build pairs
-		std::vector<std::pair<datadim_t, mdMap_t>> dimsWithMd;
+		// discretize dims
+		tPhase.reset(new Tracer("discretize", tMain));
+		std::size_t discretizeCounter = 0;
+		std::cout << "Discretize: " << std::flush;
+		std::vector<std::pair<discretedim_t, discretedim_t>> discreteDims;
 		for (auto d : dims) {
-			std::shared_ptr<mdMapObj_t::dim_t> dimPtr;
+			discretedim_t discrete;
+			discretedim_t bins;
+
 			try {
-				dimPtr = dbMetadata->createDim<mdMapObj_t::dim_t::payload_t, mdMapObj_t::dim_t::segmentSize>(d->getName());
+				discrete = dbMetadata->createDim<std::size_t>(d->getName() + ".discrete");
+				bins = dbMetadata->createDim<std::size_t>(d->getName() + ".bins");
+				discretizeDim(d, discrete, bins);
+
+				// report progress
+				if (discretizeCounter % 1000 == 0) {
+					std::cout << discretizeCounter << std::flush;
+				} else if (discretizeCounter % 100 == 0) {
+					std::cout << "." << std::flush;
+				}
+				++discretizeCounter;
 			} catch (const std::runtime_error& e) {
-				dimPtr = dbMetadata->getDim<mdMapObj_t::dim_t::payload_t, mdMapObj_t::dim_t::segmentSize>(d->getName());
+				discrete = dbMetadata->getDim<std::size_t>(d->getName() + ".discrete");
+				bins = dbMetadata->getDim<std::size_t>(d->getName() + ".bins");
 			}
 
-			auto map = std::make_shared<mdMapObj_t>(dimPtr);
-			dimsWithMd.push_back(std::make_pair(d, map));
+			discreteDims.push_back(make_pair(discrete, bins));
 		}
-
-		{
-			tPhase.reset(new Tracer("precalc", tMain));
-
-			auto tPrecalc = std::make_shared<Tracer>("exp", tPhase);
-			D1Ops::Exp::calcAndStoreVector(dimsWithMd);
-
-			tPrecalc.reset(new Tracer("var", tPhase));
-			D1Ops::Var::calcAndStoreVector(dimsWithMd);
-
-			tPrecalc.reset(new Tracer("stdDev", tPhase));
-			D1Ops::StdDev::calcAndStoreVector(dimsWithMd);
+		if (discretizeCounter == 0) {
+			std::cout << "skipped" << std::endl;
+		} else {
+			std::cout << "done" << std::endl;
 		}
 
 		// build graph from data
 		tPhase.reset(new Tracer("buildGraph", tMain));
 		auto graph = std::make_shared<gc::Graph>(dbGraph->createDim<std::size_t>("phase0.1"), dbGraph->createDim<std::size_t>("phase0.2"));
-		buildGraph(dimsWithMd, graph, cfgThresholdGen);
+		buildGraph(discreteDims, graph, cfgThresholdGen);
 
 		// cleanup
 		std::cout << "Cleanup: " << std::flush;
@@ -193,7 +200,7 @@ int main(int argc, char **argv) {
 		for (auto& d : dims) {
 			d.reset();
 		}
-		for (auto& p : dimsWithMd) {
+		for (auto& p : discreteDims) {
 			p.first.reset();
 			p.second.reset();
 		}
