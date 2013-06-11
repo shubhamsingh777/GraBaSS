@@ -13,6 +13,7 @@
 #include "sys.hpp"
 #include "graphbuilder.hpp"
 #include "parser.hpp"
+#include "d1ops.hpp"
 #include "cliquesearcher.hpp"
 #include "tracer.hpp"
 #include "graphtransformation.hpp"
@@ -155,12 +156,24 @@ int main(int argc, char **argv) {
 			std::cout << "done (" << pr.dims.size() << " columns, " << pr.nRows << " rows)" << std::endl;
 		}
 
-		// discretize dims
+		// discretize dims and build pairs
 		tPhase.reset(new Tracer("discretize", tMain));
 		std::size_t discretizeCounter = 0;
 		std::cout << "Discretize: " << std::flush;
 		std::vector<std::pair<discretedim_t, discretedim_t>> discreteDims;
+		std::vector<std::pair<datadim_t, mdMap_t>> dimsWithMd;
 		for (auto d : dims) {
+			// build pair
+			std::shared_ptr<mdMapObj_t::dim_t> dimPtr;
+			try {
+				dimPtr = dbMetadata->createDim<mdMapObj_t::dim_t::payload_t, mdMapObj_t::dim_t::segmentSize>(d->getName() + ".metadata");
+			} catch (const std::runtime_error& e) {
+				dimPtr = dbMetadata->getDim<mdMapObj_t::dim_t::payload_t, mdMapObj_t::dim_t::segmentSize>(d->getName() + ".metadata");
+			}
+			auto map = std::make_shared<mdMapObj_t>(dimPtr);
+			dimsWithMd.push_back(std::make_pair(d, map));
+
+			// discretize
 			discretedim_t discrete;
 			discretedim_t bins;
 
@@ -189,10 +202,23 @@ int main(int argc, char **argv) {
 			std::cout << "done" << std::endl;
 		}
 
+		{
+			tPhase.reset(new Tracer("precalc", tMain));
+
+			auto tPrecalc = std::make_shared<Tracer>("exp", tPhase);
+			D1Ops::Exp::calcAndStoreVector(dimsWithMd);
+
+			tPrecalc.reset(new Tracer("var", tPhase));
+			D1Ops::Var::calcAndStoreVector(dimsWithMd);
+
+			tPrecalc.reset(new Tracer("stdDev", tPhase));
+			D1Ops::StdDev::calcAndStoreVector(dimsWithMd);
+		}
+
 		// build graph from data
 		tPhase.reset(new Tracer("buildGraph", tMain));
 		auto graph = std::make_shared<gc::Graph>(dbGraph->createDim<std::size_t>("phase0.1"), dbGraph->createDim<std::size_t>("phase0.2"));
-		buildGraph(discreteDims, graph, cfgThresholdGen);
+		buildGraph(dimsWithMd, discreteDims, graph, cfgThresholdGen);
 
 		// cleanup
 		std::cout << "Cleanup: " << std::flush;
@@ -201,6 +227,10 @@ int main(int argc, char **argv) {
 			d.reset();
 		}
 		for (auto& p : discreteDims) {
+			p.first.reset();
+			p.second.reset();
+		}
+		for (auto& p : dimsWithMd) {
 			p.first.reset();
 			p.second.reset();
 		}
