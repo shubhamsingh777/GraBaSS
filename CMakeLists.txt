@@ -41,3 +41,8 @@ aux_source_directory ("src/hugedim" SourceFilesHugeDim)
 add_executable (hugeDim ${SourceFilesHugeDim})
 target_link_libraries (hugeDim pthread tbb ${Boost_LIBRARIES} greycore hugeDimCommon)
 
+# build enclus
+aux_source_directory ("src/enclus" SourceFilesEnclus)
+add_executable (enclus ${SourceFilesEnclus})
+target_link_libraries (enclus pthread tbb ${Boost_LIBRARIES} greycore hugeDimCommon)
+
