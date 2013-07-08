@@ -1,5 +1,5 @@
 #ifndef PARSER_HPP
-#define PERSER_HPP
+#define PARSER_HPP
 
 #include <memory>
 #include <string>

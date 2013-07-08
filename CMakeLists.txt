@@ -25,10 +25,19 @@ include_directories (${Boost_INCLUDE_DIR})
 
 # add extern libs
 add_subdirectory ("extern/greycore")
-include_directories ("extern/greycore/include")
+include_directories ("extern/greycore/include" "src/common")
 
-# build/install hugeDim
-aux_source_directory ("src" HGSourceFiles)
-add_executable (hugeDim ${HGSourceFiles})
-target_link_libraries (hugeDim pthread tbb ${Boost_LIBRARIES} greycore)
+# build common file
+aux_source_directory ("src/common" SourceFilesCommon)
+add_library (hugeDimCommon ${SourceFilesCommon})
+
+# build parser
+aux_source_directory ("src/parser" SourceFilesParser)
+add_executable (parser ${SourceFilesParser})
+target_link_libraries (parser ${Boost_LIBRARIES} greycore hugeDimCommon)
+
+# build hugeDim
+aux_source_directory ("src/hugedim" SourceFilesHugeDim)
+add_executable (hugeDim ${SourceFilesHugeDim})
+target_link_libraries (hugeDim pthread tbb ${Boost_LIBRARIES} greycore hugeDimCommon)
 

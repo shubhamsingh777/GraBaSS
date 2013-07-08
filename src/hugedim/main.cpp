@@ -12,7 +12,6 @@
 
 #include "sys.hpp"
 #include "graphbuilder.hpp"
-#include "parser.hpp"
 #include "d1ops.hpp"
 #include "cliquesearcher.hpp"
 #include "tracer.hpp"
@@ -28,7 +27,6 @@ namespace po = boost::program_options;
 
 int main(int argc, char **argv) {
 	// global config vars
-	std::string cfgInput;
 	std::string cfgOutput;
 	std::string cfgDbData;
 	std::string cfgDbMetadata;
@@ -42,11 +40,6 @@ int main(int argc, char **argv) {
 	// parse program options
 	po::options_description poDesc("Options");
 	poDesc.add_options()
-		(
-			"input",
-			po::value(&cfgInput)->default_value("test.input"),
-			"Input file"
-		)
 		(
 			"output",
 			po::value(&cfgOutput)->default_value("subspaces.txt"),
@@ -138,23 +131,15 @@ int main(int argc, char **argv) {
 		auto dbMetadata = std::make_shared<gc::Database>(cfgDbMetadata);
 		auto dbGraph = std::make_shared<gc::Database>(cfgDbGraph);
 		std::ofstream outfile(cfgOutput);
-		std::cout << "done" << std::endl;
 
-		std::cout << "Parse: " << std::flush;
 		auto dimNameList = dbData->getIndexDims();
 		std::vector<datadim_t> dims;
-		if (!cfgForce && (dimNameList->getSize() > 0)) {
-			for (size_t i = 0; i < dimNameList->getSize(); ++i) {
-				auto name(std::get<0>((*dimNameList)[i].toTuple()));
-				dims.push_back(dbData->getDim<data_t>(name));
-			}
-			std::cout << "skipped" << std::endl;
-		} else {
-			tPhase.reset(new Tracer("parse", tMain));
-			ParseResult pr = parse(dbData, cfgInput);
-			dims = pr.dims;
-			std::cout << "done (" << pr.dims.size() << " columns, " << pr.nRows << " rows)" << std::endl;
+		assert(dimNameList->getSize() > 0);
+		for (size_t i = 0; i < dimNameList->getSize(); ++i) {
+			auto name(std::get<0>((*dimNameList)[i].toTuple()));
+			dims.push_back(dbData->getDim<data_t>(name));
 		}
+		std::cout << "done (" << dims.size() << " columns, " << dims[0]->getSize() << " rows)" << std::endl;
 
 		// discretize dims and build pairs
 		tPhase.reset(new Tracer("discretize", tMain));
