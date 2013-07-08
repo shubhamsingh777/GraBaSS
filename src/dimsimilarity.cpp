@@ -8,31 +8,6 @@
 
 #include <iostream>
 
-struct BestCaseHelper {
-	std::size_t capacity;
-	std::size_t pos;
-
-	bool operator<(const BestCaseHelper& obj) const {
-		return this->capacity < obj.capacity;
-	}
-};
-
-inline data_t calcDelta(discretedim_t& binsA, discretedim_t& binsB, std::vector<std::vector<std::size_t>>& grid, std::size_t n) {
-	data_t delta = 0.0;
-
-	for (std::size_t i = 0; i < binsA->getSize(); ++i) {
-		data_t dA = static_cast<data_t>((*binsA)[i]) / static_cast<data_t>(n);
-		for (std::size_t j = 0; j < binsB->getSize(); ++j) {
-			data_t dB = static_cast<data_t>((*binsB)[j]) / static_cast<data_t>(n);
-			data_t e = dA * dB * static_cast<data_t>(n);
-
-			delta += fabs(static_cast<data_t>(grid[i][j]) - e);
-		}
-	}
-
-	return delta;
-}
-
 data_t dimsimilarity(discretedim_t dimA, discretedim_t binsA, discretedim_t dimB, discretedim_t binsB) {
 	assert(dimA->getSize() == dimB->getSize());
 	std::size_t n = dimA->getSize();
@@ -48,46 +23,43 @@ data_t dimsimilarity(discretedim_t dimA, discretedim_t binsA, discretedim_t dimB
 		}
 	}
 
-	// find best case (yep, greedy stuff)
-	std::vector<std::vector<std::size_t>> gridBest(binsA->getSize(), std::vector<std::size_t>(binsB->getSize(), 0));
-	std::vector<BestCaseHelper> tmpA;
+	// calc entropies
+	data_t entropyX = 0.0;
 	for (std::size_t i = 0; i < binsA->getSize(); ++i) {
-		assert((*binsA)[i] > 0);
-		tmpA.push_back({(*binsA)[i], i});
+		std::size_t c = (*binsA)[i];
+
+		if (c > 0) {
+			data_t px = static_cast<data_t>(c) / static_cast<data_t>(n);
+			entropyX -= px * log2(px);
+		}
 	}
-	std::make_heap(tmpA.begin(), tmpA.end());
-	std::vector<BestCaseHelper> tmpB;
+
+	data_t entropyY = 0.0;
 	for (std::size_t j = 0; j < binsB->getSize(); ++j) {
-		assert((*binsB)[j] > 0);
-		tmpB.push_back({(*binsB)[j], j});
-	}
-	std::make_heap(tmpB.begin(), tmpB.end());
-	while ((!tmpA.empty()) && (!tmpB.empty())) {
-		auto bA = tmpA.front();
-		auto bB = tmpB.front();
-		std::pop_heap(tmpA.begin(), tmpA.end()); tmpA.pop_back();
-		std::pop_heap(tmpB.begin(), tmpB.end()); tmpB.pop_back();
+		std::size_t c = (*binsB)[j];
 
-		std::size_t x = std::min(bA.capacity, bB.capacity);
-		bA.capacity -= x;
-		bB.capacity -= x;
-
-		if (bA.capacity > 0) {
-			tmpA.push_back(bA);
-			std::push_heap(tmpA.begin(), tmpA.end());
+		if (c > 0) {
+			data_t py = static_cast<data_t>(c) / static_cast<data_t>(n);
+			entropyY -= py * log2(py);
 		}
-		if (bB.capacity > 0) {
-			tmpB.push_back(bB);
-			std::push_heap(tmpB.begin(), tmpB.end());
-		}
-
-		gridBest[bA.pos][bB.pos] = x;
 	}
 
-	// calculate result
-	data_t delta = calcDelta(binsA, binsB, grid, n);
-	data_t deltaBest = calcDelta(binsA, binsB, gridBest, n);
+	data_t entropyXY = 0.0;
+	for (std::size_t i = 0; i < binsA->getSize(); ++i) {
+		for (std::size_t j = 0; j < binsB->getSize(); ++j) {
+			std::size_t c = grid[i][j];
 
-	return std::min(1.0, std::max(0.0, delta / deltaBest)); // fix numeric errors
+			if (c > 0) {
+				data_t pxy = static_cast<data_t>(c) / static_cast<data_t>(n);
+				entropyXY -= pxy * log2(pxy);
+			}
+		}
+	}
+
+	// calc mutual information
+	data_t mi = entropyX + entropyY - entropyXY;
+
+	// return normalized form
+	return mi / fmin(entropyX, entropyY);
 }
 
