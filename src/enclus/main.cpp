@@ -260,7 +260,10 @@ int main(int argc, char **argv) {
 		std::cout << "done (" << dims.size() << " columns, " << dims[0]->getSize() << " rows)" << std::endl;
 
 		// discretize data
+		tPhase.reset(new Tracer("discretize", tMain));
+		std::cout << "Discretize: " << std::flush;
 		std::vector<discretedim_t> ddims;
+		std::size_t dimCounter = 0;
 		for (const auto& dim : dims) {
 			// prepare
 			std::size_t nSegments = dim->getSegmentCount();
@@ -304,26 +307,54 @@ int main(int argc, char **argv) {
 
 			// store
 			ddims.push_back(dd);
+
+			// report progress
+			++dimCounter;
+			if (dimCounter % 1000 == 0) {
+				std::cout << dimCounter << std::flush;
+			} else if (dimCounter % 100 == 0) {
+				std::cout << "." << std::flush;
+			}
 		}
+		std::cout << "done" << std::endl;
 
 		// generate 1D subspaces and calc entropy for them
+		tPhase.reset(new Tracer("1d", tMain));
+		std::cout << "Build 2D subspaces + fill entropy cache: " << std::flush;
 		subspaces_t subspacesCurrent;
 		entropyCache_t entropyCache;
 		for (std::size_t i = 0; i < dims.size(); ++i) {
 			subspacesCurrent.insert({i});
 			entropyCache.push_back(calcEntropy({i}, ddims));
+
+			// report progress
+			if (i % 1000 == 0) {
+				std::cout << i << std::flush;
+			} else if (i % 100 == 0) {
+				std::cout << "." << std::flush;
+			}
 		}
+		std::cout << "done" << std::endl;
 
 		// rounds
+		tPhase.reset(new Tracer("tree", tMain));
+		std::cout << "Tree phase: " << std::flush;
 		std::vector<subspace_t> result;
+		std::size_t depth = 0;
+		data_t minEntropy = std::numeric_limits<data_t>::infinity();
+		data_t maxInterest = 0;
 		while (!subspacesCurrent.empty()) {
 			subspaces_t subspacesNext;
 
 			for (const auto& subspace : subspacesCurrent) {
 				data_t entropy = calcEntropy(subspace, ddims);
+				minEntropy = std::min(minEntropy, entropy);
 
 				if (entropy < cfgOmega) {
-					if (calcInterest(subspace, entropy, entropyCache) > cfgEpsilon) {
+					data_t interest = calcInterest(subspace, entropy, entropyCache);
+					maxInterest = std::max(maxInterest, interest);
+
+					if (interest > cfgEpsilon) {
 						result.push_back(subspace);
 					} else {
 						subspacesNext.insert(subspace);
@@ -332,7 +363,14 @@ int main(int argc, char **argv) {
 			}
 
 			subspacesCurrent = genCandidates(subspacesNext);
+			++depth;
+
+			// report progress
+			if (depth % 1 == 0) {
+				std::cout << "." << std::flush;
+			}
 		}
+		std::cout << "done (minEntropy=" << minEntropy << ", maxInterest=" << maxInterest << ")" << std::endl;
 
 		// ok, so lets write the results
 		tPhase.reset(new Tracer("output", tMain));
