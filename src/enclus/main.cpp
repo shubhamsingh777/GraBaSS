@@ -6,6 +6,7 @@
 #include <ostream>
 #include <sstream>
 #include <unordered_set>
+#include <vector>
 
 #include <boost/program_options.hpp>
 
@@ -24,6 +25,7 @@ namespace po = boost::program_options;
 typedef std::unordered_map<std::vector<std::size_t>, data_t> density_t;
 typedef std::set<std::size_t> subspace_t;
 typedef std::unordered_set<subspace_t> subspaces_t;
+typedef std::vector<data_t> entropyCache_t;
 
 std::hash<std::size_t> myHasher;
 
@@ -94,14 +96,14 @@ data_t calcEntropy(const subspace_t& subspace, const std::vector<discretedim_t>&
 	return result;
 }
 
-data_t calcInterest(const subspace_t& subspace, const std::vector<discretedim_t>& data) {
-	double aggr = 0.0;
+data_t calcInterest(const subspace_t subspace, data_t entropy, const entropyCache_t& entropyCache) {
+	data_t aggr = 0.0;
 
 	for (size_t d : subspace) {
-		aggr += calcEntropy({d}, data);
+		aggr += entropyCache[d];
 	}
 
-	return aggr - calcEntropy(subspace, data);
+	return aggr - entropy;
 }
 
 bool prune(const subspace_t& subspace, const subspaces_t& last) {
@@ -304,10 +306,12 @@ int main(int argc, char **argv) {
 			ddims.push_back(dd);
 		}
 
-		// generate 1D subspaces
+		// generate 1D subspaces and calc entropy for them
 		subspaces_t subspacesCurrent;
+		entropyCache_t entropyCache;
 		for (std::size_t i = 0; i < dims.size(); ++i) {
 			subspacesCurrent.insert({i});
+			entropyCache.push_back(calcEntropy({i}, ddims));
 		}
 
 		// rounds
@@ -316,8 +320,10 @@ int main(int argc, char **argv) {
 			subspaces_t subspacesNext;
 
 			for (const auto& subspace : subspacesCurrent) {
-				if (calcEntropy(subspace, ddims) < cfgOmega) {
-					if (calcInterest(subspace, ddims) > cfgEpsilon) {
+				data_t entropy = calcEntropy(subspace, ddims);
+
+				if (entropy < cfgOmega) {
+					if (calcInterest(subspace, entropy, entropyCache) > cfgEpsilon) {
 						result.push_back(subspace);
 					} else {
 						subspacesNext.insert(subspace);
