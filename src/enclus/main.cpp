@@ -143,7 +143,7 @@ subspaces_t genCandidates(const subspaces_t& last) {
 
 				if (cpy1 == cpy2) {
 					cpy1.insert(end1);
-					cpy2.insert(end2);
+					cpy1.insert(end2);
 
 					if (!prune(cpy1, last)) {
 						result.insert(cpy1);
