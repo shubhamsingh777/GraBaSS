@@ -11,6 +11,8 @@
 
 #include <boost/program_options.hpp>
 
+#include <tbb/blocked_range.h>
+#include <tbb/parallel_reduce.h>
 #include <tbb/task_scheduler_init.h>
 
 #include "sys.hpp"
@@ -97,8 +99,8 @@ bool prune(const subspace_t& subspace, const subspaces_t& last) {
 	return false;
 }
 
-subspaces_t genCandidates(const subspaces_t& last) {
-	subspaces_t result;
+std::vector<subspace_t> genCandidates(const subspaces_t& last) {
+	std::vector<subspace_t> result;
 
 	for (const auto& ss1 : last) {
 		bool ignore = true;
@@ -124,7 +126,7 @@ subspaces_t genCandidates(const subspaces_t& last) {
 					cpy1.insert(end2);
 
 					if (!prune(cpy1, last)) {
-						result.insert(cpy1);
+						result.push_back(cpy1);
 					}
 				}
 			}
@@ -133,6 +135,61 @@ subspaces_t genCandidates(const subspaces_t& last) {
 
 	return result;
 }
+
+class TBBHelper {
+	public:
+		std::list<subspace_t> subspacesNext;
+		std::list<subspace_t> result;
+		data_t minEntropy = std::numeric_limits<data_t>::infinity();
+		data_t maxInterest = 0;
+
+		TBBHelper(std::vector<subspace_t>& _subspacesCurrent, const std::vector<discretedim_t>& _ddims, const entropyCache_t& _entropyCache, data_t _omega, data_t _epsilon) :
+			subspacesCurrent(_subspacesCurrent),
+			ddims(_ddims),
+			entropyCache(_entropyCache),
+			omega(_omega),
+			epsilon(_epsilon) {}
+
+		TBBHelper(TBBHelper& obj, tbb::split) :
+			subspacesCurrent(obj.subspacesCurrent),
+			ddims(obj.ddims),
+			entropyCache(obj.entropyCache),
+			omega(obj.omega),
+			epsilon(obj.epsilon) {}
+
+		void operator()(const tbb::blocked_range<std::size_t>& range) {
+			for (auto i = range.begin(); i != range.end(); ++i) {
+				auto& subspace = subspacesCurrent[i];
+				data_t entropy = calcEntropy(subspace, ddims);
+				minEntropy = std::min(minEntropy, entropy);
+
+				if (entropy < omega) {
+					data_t interest = calcInterest(subspace, entropy, entropyCache);
+					maxInterest = std::max(maxInterest, interest);
+
+					if (interest > epsilon) {
+						result.push_back(std::move(subspace));
+					} else {
+						subspacesNext.push_back(std::move(subspace));
+					}
+				}
+			}
+		}
+
+		void join(TBBHelper& obj) {
+			this->subspacesNext.splice(this->subspacesNext.end(), obj.subspacesNext);
+			this->result.splice(this->result.end(), obj.result);
+			this->minEntropy = std::min(this->minEntropy, obj.minEntropy);
+			this->maxInterest = std::max(this->maxInterest, obj.maxInterest);
+		}
+
+	private:
+		std::vector<subspace_t>& subspacesCurrent;
+		const std::vector<discretedim_t>& ddims;
+		const entropyCache_t& entropyCache;
+		data_t omega;
+		data_t epsilon;
+};
 
 int main(int argc, char **argv) {
 	// global config vars
@@ -244,10 +301,10 @@ int main(int argc, char **argv) {
 		// generate 1D subspaces and calc entropy for them
 		tPhase.reset(new Tracer("1d", tMain));
 		std::cout << "Build 1D subspaces + fill entropy cache: " << std::flush;
-		subspaces_t subspacesCurrent;
+		std::vector<subspace_t> subspacesCurrent;
 		entropyCache_t entropyCache;
 		for (std::size_t i = 0; i < dims.size(); ++i) {
-			subspacesCurrent.insert({i});
+			subspacesCurrent.push_back({i});
 			entropyCache.push_back(calcEntropy({i}, ddims));
 
 			// report progress
@@ -262,33 +319,23 @@ int main(int argc, char **argv) {
 		// rounds
 		tPhase.reset(new Tracer("tree", tMain));
 		std::cout << "Tree phase: " << std::endl;
-		std::vector<subspace_t> result;
+		std::list<subspace_t> result;
 		std::size_t depth = 0;
 		data_t minEntropy = std::numeric_limits<data_t>::infinity();
 		data_t maxInterest = 0;
 		while (!subspacesCurrent.empty()) {
-			subspaces_t subspacesNext;
+			TBBHelper helper(subspacesCurrent, ddims, entropyCache, cfgOmega, cfgEpsilon);
+			parallel_reduce(tbb::blocked_range<std::size_t>(0, subspacesCurrent.size()), helper);
 
-			for (auto& subspace : subspacesCurrent) {
-				data_t entropy = calcEntropy(subspace, ddims);
-				minEntropy = std::min(minEntropy, entropy);
+			result.splice(result.end(), helper.result);
 
-				if (entropy < cfgOmega) {
-					data_t interest = calcInterest(subspace, entropy, entropyCache);
-					maxInterest = std::max(maxInterest, interest);
-
-					if (interest > cfgEpsilon) {
-						result.push_back(std::move(subspace));
-					} else {
-						subspacesNext.insert(std::move(subspace));
-					}
-				}
-			}
-
-			subspacesCurrent = genCandidates(subspacesNext);
+			subspaces_t dict(helper.subspacesNext.begin(), helper.subspacesNext.end());
+			subspacesCurrent = genCandidates(dict);
 			++depth;
 
 			// report progress
+			minEntropy = std::min(minEntropy, helper.minEntropy);
+			maxInterest = std::max(maxInterest, helper.maxInterest);
 			std::cout << "depth=" << depth << ", candidates=" << subspacesCurrent.size() << std::endl;
 		}
 		std::cout << "done (minEntropy=" << minEntropy << ", maxInterest=" << maxInterest << ")" << std::endl;
