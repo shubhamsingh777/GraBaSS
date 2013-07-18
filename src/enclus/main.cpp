@@ -258,7 +258,7 @@ int main(int argc, char **argv) {
 
 		// rounds
 		tPhase.reset(new Tracer("tree", tMain));
-		std::cout << "Tree phase: " << std::flush;
+		std::cout << "Tree phase: " << std::endl;
 		std::vector<subspace_t> result;
 		std::size_t depth = 0;
 		data_t minEntropy = std::numeric_limits<data_t>::infinity();
@@ -286,9 +286,7 @@ int main(int argc, char **argv) {
 			++depth;
 
 			// report progress
-			if (depth % 1 == 0) {
-				std::cout << "." << std::flush;
-			}
+			std::cout << "depth=" << depth << ", candidates=" << subspacesCurrent.size() << std::endl;
 		}
 		std::cout << "done (minEntropy=" << minEntropy << ", maxInterest=" << maxInterest << ")" << std::endl;
 
