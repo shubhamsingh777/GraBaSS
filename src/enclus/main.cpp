@@ -63,7 +63,7 @@ data_t calcEntropy(const subspace_t& subspace, const std::vector<discretedim_t>&
 	density_t density = calcDensity(subspace, data);
 	data_t result = 0.0;
 
-	for (auto kv : density) {
+	for (const auto& kv : density) {
 		data_t p = kv.second;
 		result -= p * log2(p);
 	}
@@ -266,7 +266,7 @@ int main(int argc, char **argv) {
 		while (!subspacesCurrent.empty()) {
 			subspaces_t subspacesNext;
 
-			for (const auto& subspace : subspacesCurrent) {
+			for (auto& subspace : subspacesCurrent) {
 				data_t entropy = calcEntropy(subspace, ddims);
 				minEntropy = std::min(minEntropy, entropy);
 
@@ -275,9 +275,9 @@ int main(int argc, char **argv) {
 					maxInterest = std::max(maxInterest, interest);
 
 					if (interest > cfgEpsilon) {
-						result.push_back(subspace);
+						result.push_back(std::move(subspace));
 					} else {
-						subspacesNext.insert(subspace);
+						subspacesNext.insert(std::move(subspace));
 					}
 				}
 			}
