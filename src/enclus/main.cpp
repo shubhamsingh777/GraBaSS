@@ -243,7 +243,7 @@ int main(int argc, char **argv) {
 
 		// generate 1D subspaces and calc entropy for them
 		tPhase.reset(new Tracer("1d", tMain));
-		std::cout << "Build 2D subspaces + fill entropy cache: " << std::flush;
+		std::cout << "Build 1D subspaces + fill entropy cache: " << std::flush;
 		subspaces_t subspacesCurrent;
 		entropyCache_t entropyCache;
 		for (std::size_t i = 0; i < dims.size(); ++i) {
