@@ -36,6 +36,7 @@ density_t calcDensity(const subspace_t& subspace, const std::vector<discretedim_
 	std::size_t nSegments = data.at(0)->getSegmentCount();
 	std::size_t n = data.at(0)->getSize();
 	data_t step = 1.0 / static_cast<data_t>(n);
+	std::vector<size_t> pos(subspace.size());
 
 	for (std::size_t segment = 0; segment < nSegments; ++segment) {
 		std::size_t size = data.at(0)->getSegmentFillSize(segment);
@@ -48,7 +49,6 @@ density_t calcDensity(const subspace_t& subspace, const std::vector<discretedim_
 		}
 
 		for (std::size_t i = 0; i < size; ++i) {
-			std::vector<size_t> pos(subspace.size());
 			std::size_t posIter = 0;
 
 			for (const auto& segmentPtr : segmentPtrs) {
