@@ -16,6 +16,7 @@
 #include "tracer.hpp"
 
 #include "disretize.hpp"
+#include "hash.hpp"
 
 #include "greycore/database.hpp"
 #include "greycore/dim.hpp"
@@ -28,34 +29,6 @@ typedef std::unordered_map<std::vector<std::size_t>, data_t> density_t;
 typedef std::set<std::size_t> subspace_t;
 typedef std::unordered_set<subspace_t> subspaces_t;
 typedef std::vector<data_t> entropyCache_t;
-
-std::hash<std::size_t> myHasher;
-
-template<>
-struct std::hash<std::vector<std::size_t>> {
-	std::size_t operator()(const std::vector<std::size_t>& obj) const {
-		std::size_t result = 0;
-
-		for (const auto& element : obj) {
-			result ^= myHasher(element);
-		}
-
-		return result;
-	}
-};
-
-template<>
-struct std::hash<std::set<std::size_t>> {
-	std::size_t operator()(const std::set<std::size_t>& obj) const {
-		std::size_t result = 0;
-
-		for (const auto& element : obj) {
-			result ^= myHasher(element);
-		}
-
-		return result;
-	}
-};
 
 density_t calcDensity(const subspace_t& subspace, const std::vector<discretedim_t>& data) {
 	density_t density;
