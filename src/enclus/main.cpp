@@ -2,6 +2,7 @@
 #include <cassert>
 #include <iostream>
 #include <limits>
+#include <list>
 #include <memory>
 #include <ostream>
 #include <sstream>
@@ -38,18 +39,20 @@ density_t calcDensity(const subspace_t& subspace, const std::vector<discretedim_
 
 	for (std::size_t segment = 0; segment < nSegments; ++segment) {
 		std::size_t size = data.at(0)->getSegmentFillSize(segment);
-		typename std::vector<discretedimObj_t::segment_t*> segmentPtrs;
 
+		typename std::vector<discretedimObj_t::segment_t*> segmentPtrs(subspace.size());
+		std::size_t ptrIter = 0;
 		for (std::size_t s : subspace) {
 			const discretedim_t& dim = data.at(s);
-			segmentPtrs.push_back(dim->getSegment(segment));
+			segmentPtrs[ptrIter++] = dim->getSegment(segment);
 		}
 
 		for (std::size_t i = 0; i < size; ++i) {
-			std::vector<size_t> pos;
+			std::vector<size_t> pos(subspace.size());
+			std::size_t posIter = 0;
 
 			for (const auto& segmentPtr : segmentPtrs) {
-				pos.push_back((*segmentPtr)[i]);
+				pos[posIter++] = (*segmentPtr)[i];
 			}
 
 			density[pos] += step;
