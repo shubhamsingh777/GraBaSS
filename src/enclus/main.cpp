@@ -174,7 +174,6 @@ class TBBHelper {
 					if (interestNorm > epsilon) {
 						result.push_back(std::move(subspace));
 					} else {
-						std::cout << interestNorm << std::endl;
 						subspacesNext.push_back(std::move(subspace));
 					}
 				}
