@@ -143,33 +143,38 @@ class TBBHelper {
 		data_t minEntropy = std::numeric_limits<data_t>::infinity();
 		data_t maxInterest = 0;
 
-		TBBHelper(std::vector<subspace_t>& _subspacesCurrent, const std::vector<discretedim_t>& _ddims, const entropyCache_t& _entropyCache, data_t _omega, data_t _epsilon) :
+		TBBHelper(std::vector<subspace_t>& _subspacesCurrent, const std::vector<discretedim_t>& _ddims, const entropyCache_t& _entropyCache, data_t _omega, data_t _epsilon, std::size_t _xi) :
 			subspacesCurrent(_subspacesCurrent),
 			ddims(_ddims),
 			entropyCache(_entropyCache),
 			omega(_omega),
-			epsilon(_epsilon) {}
+			epsilon(_epsilon),
+			xi(_xi) {}
 
 		TBBHelper(TBBHelper& obj, tbb::split) :
 			subspacesCurrent(obj.subspacesCurrent),
 			ddims(obj.ddims),
 			entropyCache(obj.entropyCache),
 			omega(obj.omega),
-			epsilon(obj.epsilon) {}
+			epsilon(obj.epsilon),
+			xi(obj.xi) {}
 
 		void operator()(const tbb::blocked_range<std::size_t>& range) {
 			for (auto i = range.begin(); i != range.end(); ++i) {
 				auto& subspace = subspacesCurrent[i];
 				data_t entropy = calcEntropy(subspace, ddims);
-				minEntropy = std::min(minEntropy, entropy);
+				data_t entropyNorm = entropy / log2(xi * subspace.size());
+				minEntropy = std::min(minEntropy, entropyNorm);
 
-				if (entropy < omega) {
+				if (entropyNorm < omega) {
 					data_t interest = calcInterest(subspace, entropy, entropyCache);
-					maxInterest = std::max(maxInterest, interest);
+					data_t interestNorm = interest / log2(xi * subspace.size());
+					maxInterest = std::max(maxInterest, interestNorm);
 
-					if (interest > epsilon) {
+					if (interestNorm > epsilon) {
 						result.push_back(std::move(subspace));
 					} else {
+						std::cout << interestNorm << std::endl;
 						subspacesNext.push_back(std::move(subspace));
 					}
 				}
@@ -189,6 +194,7 @@ class TBBHelper {
 		const entropyCache_t& entropyCache;
 		data_t omega;
 		data_t epsilon;
+		std::size_t xi;
 };
 
 int main(int argc, char **argv) {
@@ -324,7 +330,7 @@ int main(int argc, char **argv) {
 		data_t minEntropy = std::numeric_limits<data_t>::infinity();
 		data_t maxInterest = 0;
 		while (!subspacesCurrent.empty()) {
-			TBBHelper helper(subspacesCurrent, ddims, entropyCache, cfgOmega, cfgEpsilon);
+			TBBHelper helper(subspacesCurrent, ddims, entropyCache, cfgOmega, cfgEpsilon, cfgXi);
 			parallel_reduce(tbb::blocked_range<std::size_t>(0, subspacesCurrent.size()), helper);
 
 			result.splice(result.end(), helper.result);
