@@ -18,8 +18,9 @@
 #include "sys.hpp"
 #include "tracer.hpp"
 
+#include "enclus.hpp"
 #include "disretize.hpp"
-#include "hash.hpp"
+#include "gencandidates.hpp"
 
 #include "greycore/database.hpp"
 #include "greycore/dim.hpp"
@@ -27,11 +28,6 @@
 
 namespace gc = greycore;
 namespace po = boost::program_options;
-
-typedef std::unordered_map<std::vector<std::size_t>, data_t> density_t;
-typedef std::set<std::size_t> subspace_t;
-typedef std::unordered_set<subspace_t> subspaces_t;
-typedef std::vector<data_t> entropyCache_t;
 
 density_t calcDensity(const subspace_t& subspace, const std::vector<discretedim_t>& data) {
 	density_t density;
@@ -84,56 +80,6 @@ data_t calcInterest(const subspace_t subspace, data_t entropy, const entropyCach
 	}
 
 	return aggr - entropy;
-}
-
-bool prune(const subspace_t& subspace, const subspaces_t& last) {
-	for (std::size_t d : subspace) {
-		subspace_t test(subspace);
-		test.erase(d);
-
-		if (last.find(test) == last.cend()) {
-			return true;
-		}
-	}
-
-	return false;
-}
-
-std::vector<subspace_t> genCandidates(const subspaces_t& last) {
-	std::vector<subspace_t> result;
-
-	for (const auto& ss1 : last) {
-		bool ignore = true;
-
-		for (const auto& ss2 : last) {
-			if (ignore) {
-				if (ss1 == ss2) {
-					ignore = false;
-				}
-			} else {
-				subspace_t cpy1(ss1);
-				subspace_t cpy2(ss2);
-				auto iter1 = --cpy1.end();
-				auto iter2 = --cpy2.end();
-				std::size_t end1 = *iter1;
-				std::size_t end2 = *iter2;
-
-				cpy1.erase(iter1);
-				cpy2.erase(iter2);
-
-				if (cpy1 == cpy2) {
-					cpy1.insert(end1);
-					cpy1.insert(end2);
-
-					if (!prune(cpy1, last)) {
-						result.push_back(cpy1);
-					}
-				}
-			}
-		}
-	}
-
-	return result;
 }
 
 class TBBHelper {
