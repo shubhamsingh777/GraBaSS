@@ -275,19 +275,22 @@ int main(int argc, char **argv) {
 		data_t minEntropy = std::numeric_limits<data_t>::infinity();
 		data_t maxInterest = 0;
 		while (!subspacesCurrent.empty()) {
+			std::cout << "depth=" << depth << ", candidatesNow=" << subspacesCurrent.size() << std::flush;
+
 			TBBHelper helper(subspacesCurrent, ddims, entropyCache, cfgOmega, cfgEpsilon, cfgXi);
 			parallel_reduce(tbb::blocked_range<std::size_t>(0, subspacesCurrent.size()), helper);
 
 			result.splice(result.end(), helper.result);
 
 			subspaces_t dict(helper.subspacesNext.begin(), helper.subspacesNext.end());
+			std::cout << ", baseNext=" << dict.size() << std::flush;
 			subspacesCurrent = genCandidates(dict);
 			++depth;
 
 			// report progress
 			minEntropy = std::min(minEntropy, helper.minEntropy);
 			maxInterest = std::max(maxInterest, helper.maxInterest);
-			std::cout << "depth=" << depth << ", candidates=" << subspacesCurrent.size() << std::endl;
+			std::cout << std::endl;
 		}
 		std::cout << "done (minEntropy=" << minEntropy << ", maxInterest=" << maxInterest << ")" << std::endl;
 
