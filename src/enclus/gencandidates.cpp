@@ -39,46 +39,41 @@ class TBBHelperGC {
 
 		void operator()(const tbb::blocked_range<std::size_t>& range) {
 			for (auto i = range.begin(); i != range.end(); ++i) {
-				auto& ss1 = lastVector.at(i);
-				bool ignore = true;
+				const auto& ss1 = lastVector.at(i);
 
-				for (const auto& ss2 : lastVector) {
-					if (ignore) {
-						if (ss1 == ss2) {
-							ignore = false;
+				for (std::size_t j = i + 1; j != lastVector.size(); ++j) {
+					const auto& ss2 = lastVector.at(j);
+
+					subspace_t next;
+					auto iter1 = ss1.begin();
+					auto iter2 = ss2.begin();
+					std::size_t x1;
+					std::size_t x2;
+					while ((iter1 != ss1.end()) && (iter2 != ss2.end())) {
+						x1 = *iter1;
+						x2 = *iter2;
+
+						++iter1;
+						++iter2;
+
+						if (x1 == x2) {
+							next.push_back(x1);
+						} else {
+							break;
 						}
-					} else {
-						subspace_t next;
-						auto iter1 = ss1.begin();
-						auto iter2 = ss2.begin();
-						std::size_t x1;
-						std::size_t x2;
-						while ((iter1 != ss1.end()) && (iter2 != ss2.end())) {
-							x1 = *iter1;
-							x2 = *iter2;
+					}
 
-							++iter1;
-							++iter2;
-
-							if (x1 == x2) {
-								next.push_back(x1);
-							} else {
-								break;
-							}
+					if ((iter1 == ss1.end()) && (iter2 == ss2.end())) {
+						if (x1 < x2) {
+							next.push_back(x1);
+							next.push_back(x2);
+						} else {
+							next.push_back(x2);
+							next.push_back(x1);
 						}
 
-						if ((iter1 == ss1.end()) && (iter2 == ss2.end())) {
-							if (x1 < x2) {
-								next.push_back(x1);
-								next.push_back(x2);
-							} else {
-								next.push_back(x2);
-								next.push_back(x1);
-							}
-
-							if (!prune(next, last)) {
-								result.push_back(next);
-							}
+						if (!prune(next, last)) {
+							result.push_back(next);
 						}
 					}
 				}
