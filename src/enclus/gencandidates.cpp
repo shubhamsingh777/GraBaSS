@@ -6,9 +6,16 @@
 #include <tbb/parallel_reduce.h>
 
 bool prune(const subspace_t& subspace, const subspaces_t& last) {
-	for (std::size_t d : subspace) {
-		subspace_t test(subspace);
-		test.erase(d);
+	for (std::size_t idxD = 0; idxD < subspace.size(); ++idxD) {
+		// gen subsubspace
+		subspace_t test;
+		std::size_t i = 0;
+		for (std::size_t d : subspace) {
+			if (i != idxD) {
+				test.push_back(d);
+			}
+			++i;
+		}
 
 		if (last.find(test) == last.cend()) {
 			return true;
@@ -41,22 +48,36 @@ class TBBHelperGC {
 							ignore = false;
 						}
 					} else {
-						subspace_t cpy1(ss1);
-						subspace_t cpy2(ss2);
-						auto iter1 = --cpy1.end();
-						auto iter2 = --cpy2.end();
-						std::size_t end1 = *iter1;
-						std::size_t end2 = *iter2;
+						subspace_t next;
+						auto iter1 = ss1.begin();
+						auto iter2 = ss2.begin();
+						std::size_t x1;
+						std::size_t x2;
+						while ((iter1 != ss1.end()) && (iter2 != ss2.end())) {
+							x1 = *iter1;
+							x2 = *iter2;
 
-						cpy1.erase(iter1);
-						cpy2.erase(iter2);
+							++iter1;
+							++iter2;
 
-						if (cpy1 == cpy2) {
-							cpy1.insert(end1);
-							cpy1.insert(end2);
+							if (x1 == x2) {
+								next.push_back(x1);
+							} else {
+								break;
+							}
+						}
 
-							if (!prune(cpy1, last)) {
-								result.push_back(cpy1);
+						if ((iter1 == ss1.end()) && (iter2 == ss2.end())) {
+							if (x1 < x2) {
+								next.push_back(x1);
+								next.push_back(x2);
+							} else {
+								next.push_back(x2);
+								next.push_back(x1);
+							}
+
+							if (!prune(next, last)) {
+								result.push_back(next);
 							}
 						}
 					}

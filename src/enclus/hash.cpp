@@ -2,6 +2,16 @@
 
 std::hash<std::size_t> myHasher;
 
+std::size_t std::hash<std::list<std::size_t>>::operator()(const std::list<std::size_t>& obj) const {
+	std::size_t result = 0;
+
+	for (const auto& element : obj) {
+		result = myHasher(myHasher(element) ^ result);
+	}
+
+	return result;
+}
+
 std::size_t std::hash<std::vector<std::size_t>>::operator()(const std::vector<std::size_t>& obj) const {
 	std::size_t result = 0;
 
