@@ -212,11 +212,11 @@ int main(int argc, char **argv) {
 	}
 
 	// setup tbb
-	if (cfgThreads == 0) {
-		tbb::task_scheduler_init(-1 /*=tbb::task_scheduler_init::automatic*/);
-	} else {
-		tbb::task_scheduler_init(cfgThreads);
+	int threads = static_cast<int>(cfgThreads);
+	if (threads == 0) {
+		threads = -1; // = tbb::task_scheduler_init::automatic
 	}
+	tbb::task_scheduler_init init(threads);
 
 	// start time tracing
 	std::stringstream timerProfile;
