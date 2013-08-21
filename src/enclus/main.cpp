@@ -269,7 +269,7 @@ int main(int argc, char **argv) {
 		tPhase.reset(new Tracer("tree", tMain));
 		std::cout << "Tree phase: " << std::endl;
 		std::list<subspace_t> result;
-		std::size_t depth = 0;
+		std::size_t depth = 1;
 		data_t minEntropy = std::numeric_limits<data_t>::infinity();
 		data_t maxInterest = 0;
 		while (!subspacesCurrent.empty()) {
