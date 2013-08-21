@@ -109,15 +109,13 @@ class TBBHelper {
 			for (auto i = range.begin(); i != range.end(); ++i) {
 				auto& subspace = subspacesCurrent[i];
 				data_t entropy = calcEntropy(subspace, ddims);
-				data_t entropyNorm = entropy / log2(xi * subspace.size());
-				minEntropy = std::min(minEntropy, entropyNorm);
+				minEntropy = std::min(minEntropy, entropy);
 
-				if (entropyNorm < omega) {
+				if (entropy < omega) {
 					data_t interest = calcInterest(subspace, entropy, entropyCache);
-					data_t interestNorm = interest / log2(xi * subspace.size());
-					maxInterest = std::max(maxInterest, interestNorm);
+					maxInterest = std::max(maxInterest, interest);
 
-					if (interestNorm > epsilon) {
+					if (interest > epsilon) {
 						result.push_back(std::move(subspace));
 					} else {
 						subspacesNext.push_back(std::move(subspace));
