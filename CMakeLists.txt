@@ -46,3 +46,8 @@ aux_source_directory ("src/enclus" SourceFilesEnclus)
 add_executable (enclus ${SourceFilesEnclus})
 target_link_libraries (enclus pthread tbb ${Boost_LIBRARIES} greycore hugeDimCommon)
 
+# build lof
+aux_source_directory ("src/lof" SourceFilesLOF)
+add_executable (lof ${SourceFilesLOF})
+target_link_libraries (lof pthread tbb ${Boost_LIBRARIES} greycore hugeDimCommon)
+
