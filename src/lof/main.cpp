@@ -105,9 +105,9 @@ distCache_t precalcDists(std::size_t kMax, const std::vector<datadim_t>& data, c
 
 			auto& neighbors = result[obj1];
 			data_t kMaxDist = std::get<1>(dists[kMax - 1]);
-			for (std::size_t neighbor = 0; (neighbor < nObjs - 1) && (std::get<1>(dists[neighbor]) <= kMaxDist); ++neighbor) {
-				neighbors.push_back(dists[neighbor]);
-			}
+			auto neighbor = dists.begin();
+			for (; (neighbor != dists.end()) && (std::get<1>(*neighbor) <= kMaxDist); ++neighbor) {}
+			neighbors.assign(dists.begin(), neighbor);
 
 			// report progress
 			if (obj1 % 1000 == 0) {
@@ -277,7 +277,7 @@ int main(int argc, char **argv) {
 
 		// iterate over all subspaces
 		tPhase.reset(new Tracer("subspaces", tMain));
-		std::cout << "Calculate LOF for all subspaces: " << std::flush;
+		std::cout << "Calculate LOF for all subspaces: " << std::endl;
 		std::vector<std::list<data_t>> lofs(dims[0]->getSize());
 		std::string ssstring;
 		std::size_t sID = 0;
@@ -296,18 +296,14 @@ int main(int argc, char **argv) {
 					std::cout << "." << std::flush;
 				}
 
-				// normalize
-				data_t max = *std::max_element(bestLOFs.cbegin(), bestLOFs.cend());
-				for (auto& x : bestLOFs) {
-					x /= max;
-				}
-
 				for (std::size_t i = 0; i < bestLOFs.size(); ++i) {
 					lofs[i].push_back(bestLOFs[i]);
 				}
 
 				std::cout << "done" << std::endl;
 			}
+
+			++sID;
 		}
 		std::cout << "all done" << std::endl;
 
