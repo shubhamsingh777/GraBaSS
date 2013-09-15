@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <atomic>
 #include <cassert>
 #include <iostream>
 #include <limits>
@@ -56,14 +57,96 @@ data_t d(std::size_t i, std::size_t j, const segmentPtrs_t& ptrs1, const segment
 	return sqrt(sum);
 }
 
+class TBBHelper {
+	public:
+		TBBHelper(distCache_t& _result, std::size_t _kMax, const std::vector<datadim_t>& _data, const std::vector<std::size_t>& _subspace, std::atomic<std::size_t>& _progress, std::size_t _obj1base, segmentPtrs_t& _segmentPtr1) :
+			result(_result),
+			kMax(_kMax),
+			data(_data),
+			subspace(_subspace),
+			progress(_progress),
+			obj1base(_obj1base),
+			segmentPtr1(_segmentPtr1) {}
+
+		TBBHelper(TBBHelper& obj, tbb::split) :
+			result(obj.result),
+			kMax(obj.kMax),
+			data(obj.data),
+			subspace(obj.subspace),
+			progress(obj.progress),
+			obj1base(obj.obj1base),
+			segmentPtr1(obj.segmentPtr1) {}
+
+		void operator()(const tbb::blocked_range<std::size_t>& range) {
+			std::size_t nObjs = data[0]->getSize();
+			std::vector<std::tuple<std::size_t, data_t>> dists(nObjs - 1);
+			std::size_t nSegments = data[0]->getSegmentCount();
+
+			// level 1: objects
+			for (std::size_t i = range.begin(); i != range.end(); ++i) {
+				std::size_t obj1 = obj1base + i;
+
+				// level 2: segments
+				std::size_t obj2 = 0;
+				std::size_t idx = 0;
+				for (std::size_t segment2 = 0; segment2 < nSegments; ++segment2) {
+					std::size_t size2 = data[0]->getSegmentFillSize(segment2);
+
+					segmentPtrs_t segmentPtr2(subspace.size());
+					std::size_t ptrIter2 = 0;
+					for (std::size_t s : subspace) {
+						const auto& dim = data[s];
+						segmentPtr2[ptrIter2++] = dim->getSegment(segment2);
+					}
+
+					// level 2: objects
+					for (std::size_t j = 0; j < size2; ++j) {
+						if (obj1 != obj2) {
+							dists[idx++] = std::make_tuple(obj2, d(i, j, segmentPtr1, segmentPtr2));
+						}
+
+						++obj2;
+					}
+				}
+
+				std::sort(dists.begin(), dists.end(), [](const std::tuple<std::size_t, data_t>& a, const std::tuple<std::size_t, data_t>& b){
+					return std::get<1>(a) < std::get<1>(b);
+				});
+
+				auto& neighbors = result[obj1];
+				data_t kMaxDist = std::get<1>(dists[kMax - 1]);
+				auto neighbor = dists.begin();
+				for (; (neighbor != dists.end()) && (std::get<1>(*neighbor) <= kMaxDist); ++neighbor) {}
+				neighbors.assign(dists.begin(), neighbor);
+
+				// report progress
+				std::size_t p = progress++;
+				if (p % 1000 == 0) {
+					std::cout << "+" << std::flush;
+				}
+			}
+		}
+
+		void join(TBBHelper&) {}
+
+	private:
+		distCache_t& result;
+		std::size_t kMax;
+		const std::vector<datadim_t>& data;
+		const std::vector<std::size_t>& subspace;
+		std::atomic<std::size_t>& progress;
+		std::size_t obj1base;
+		segmentPtrs_t& segmentPtr1;
+};
+
 distCache_t precalcDists(std::size_t kMax, const std::vector<datadim_t>& data, const std::vector<std::size_t>& subspace) {
 	std::size_t nObjs = data[0]->getSize();
 	std::size_t nSegments = data[0]->getSegmentCount();
-	std::vector<std::tuple<std::size_t, data_t>> dists(nObjs - 1);
 	distCache_t result(nObjs);
+	std::atomic<std::size_t> progress(0);
 
 	// level 1: segments
-	std::size_t obj1 = 0;
+	std::size_t obj1base = 0;
 	for (std::size_t segment1 = 0; segment1 < nSegments; ++segment1) {
 		std::size_t size1 = data[0]->getSegmentFillSize(segment1);
 
@@ -75,47 +158,10 @@ distCache_t precalcDists(std::size_t kMax, const std::vector<datadim_t>& data, c
 		}
 
 		// level 1: objects
-		for (std::size_t i = 0; i < size1; ++i) {
-			// level 2: segments
-			std::size_t obj2 = 0;
-			std::size_t idx = 0;
-			for (std::size_t segment2 = 0; segment2 < nSegments; ++segment2) {
-				std::size_t size2 = data[0]->getSegmentFillSize(segment2);
+		TBBHelper helper(result, kMax, data, subspace, progress, obj1base, segmentPtr1);
+		parallel_reduce(tbb::blocked_range<std::size_t>(0, size1), helper);
 
-				segmentPtrs_t segmentPtr2(subspace.size());
-				std::size_t ptrIter2 = 0;
-				for (std::size_t s : subspace) {
-					const auto& dim = data[s];
-					segmentPtr2[ptrIter2++] = dim->getSegment(segment2);
-				}
-
-				// level 2: objects
-				for (std::size_t j = 0; j < size2; ++j) {
-					if (obj1 != obj2) {
-						dists[idx++] = std::make_tuple(obj2, d(i, j, segmentPtr1, segmentPtr2));
-					}
-
-					++obj2;
-				}
-			}
-
-			std::sort(dists.begin(), dists.end(), [](const std::tuple<std::size_t, data_t>& a, const std::tuple<std::size_t, data_t>& b){
-				return std::get<1>(a) < std::get<1>(b);
-			});
-
-			auto& neighbors = result[obj1];
-			data_t kMaxDist = std::get<1>(dists[kMax - 1]);
-			auto neighbor = dists.begin();
-			for (; (neighbor != dists.end()) && (std::get<1>(*neighbor) <= kMaxDist); ++neighbor) {}
-			neighbors.assign(dists.begin(), neighbor);
-
-			// report progress
-			if (obj1 % 1000 == 0) {
-				std::cout << "+" << std::flush;
-			}
-
-			++obj1;
-		}
+		obj1base += size1;
 	}
 
 	return result;
