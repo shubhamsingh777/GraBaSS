@@ -108,7 +108,7 @@ int main(int argc, char **argv) {
 	}
 	po::notify(poVm);
 	if (poVm.count("help")) {
-		std::cout << "hugeDim"<< std::endl << std::endl << poDesc << std::endl;
+		std::cout << "GraBaSS"<< std::endl << std::endl << poDesc << std::endl;
 		return EXIT_SUCCESS;
 	}
 	cfgForce = poVm.count("force");

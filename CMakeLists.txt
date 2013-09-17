@@ -29,25 +29,25 @@ include_directories ("extern/greycore/include" "src/common")
 
 # build common file
 aux_source_directory ("src/common" SourceFilesCommon)
-add_library (hugeDimCommon ${SourceFilesCommon})
+add_library (common ${SourceFilesCommon})
 
 # build parser
 aux_source_directory ("src/parser" SourceFilesParser)
 add_executable (parser ${SourceFilesParser})
-target_link_libraries (parser ${Boost_LIBRARIES} greycore hugeDimCommon)
+target_link_libraries (parser ${Boost_LIBRARIES} greycore common)
 
-# build hugeDim
-aux_source_directory ("src/hugedim" SourceFilesHugeDim)
-add_executable (hugeDim ${SourceFilesHugeDim})
-target_link_libraries (hugeDim pthread tbb ${Boost_LIBRARIES} greycore hugeDimCommon)
+# build GraBaSS
+aux_source_directory ("src/grabass" SourceFilesGrabass)
+add_executable (grabass ${SourceFilesGrabass})
+target_link_libraries (grabass pthread tbb ${Boost_LIBRARIES} greycore common)
 
-# build enclus
+# build ENCLUS
 aux_source_directory ("src/enclus" SourceFilesEnclus)
 add_executable (enclus ${SourceFilesEnclus})
-target_link_libraries (enclus pthread tbb ${Boost_LIBRARIES} greycore hugeDimCommon)
+target_link_libraries (enclus pthread tbb ${Boost_LIBRARIES} greycore common)
 
-# build lof
-aux_source_directory ("src/lof" SourceFilesLOF)
-add_executable (lof ${SourceFilesLOF})
-target_link_libraries (lof pthread tbb ${Boost_LIBRARIES} greycore hugeDimCommon)
+# build LOF
+aux_source_directory ("src/lof" SourceFilesLof)
+add_executable (lof ${SourceFilesLof})
+target_link_libraries (lof pthread tbb ${Boost_LIBRARIES} greycore common)
 

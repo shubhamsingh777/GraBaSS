@@ -163,7 +163,7 @@ int main(int argc, char **argv) {
 	}
 	po::notify(poVm);
 	if (poVm.count("help")) {
-		std::cout << "enclus"<< std::endl << std::endl << poDesc << std::endl;
+		std::cout << "ENCLUS"<< std::endl << std::endl << poDesc << std::endl;
 		return EXIT_SUCCESS;
 	}
 
