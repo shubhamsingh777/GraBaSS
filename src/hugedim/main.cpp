@@ -11,6 +11,7 @@
 #include <tbb/task_scheduler_init.h>
 
 #include "sys.hpp"
+#include "entropy.hpp"
 #include "graphbuilder.hpp"
 #include "d1ops.hpp"
 #include "cliquesearcher.hpp"
@@ -36,6 +37,7 @@ int main(int argc, char **argv) {
 	bool cfgForce;
 	std::size_t cfgGraphDist;
 	std::size_t cfgThreads;
+	data_t cfgPostFilter;
 
 	// parse program options
 	po::options_description poDesc("Options");
@@ -74,6 +76,11 @@ int main(int argc, char **argv) {
 			"graphDist",
 			po::value(&cfgGraphDist)->default_value(1),
 			"Maximal graph distance of clique members (ignored if < 2)"
+		)
+		(
+			"postFilter",
+			po::value(&cfgPostFilter)->default_value(0.0, "0.0"),
+			"Entropy threshold for subspaces"
 		)
 		(
 			"threads",
@@ -213,7 +220,7 @@ int main(int argc, char **argv) {
 			d.reset();
 		}
 		for (auto& p : discreteDims) {
-			p.first.reset();
+			// p.first.reset(); NO! required for post filter
 			p.second.reset();
 		}
 		for (auto& p : dimsWithMd) {
@@ -268,27 +275,67 @@ int main(int argc, char **argv) {
 		auto subspaces = bronKerboschDegeneracy(sortedGraph);
 
 		// lookup final subspace results from idMap
-		decltype(subspaces) result;
+		std::list<subspace_t> result;
 		std::transform(subspaces.begin(), subspaces.end(), std::back_inserter(result), [&idMap](const std::vector<std::size_t>& ss){
-					std::vector<std::size_t> tmp;
+					std::list<std::size_t> tmp;
 					std::transform(ss.begin(), ss.end(), std::back_inserter(tmp), [&idMap](std::size_t d) {
 							return idMap[d];
 						});
-					std::sort(tmp.begin(), tmp.end());
+					tmp.sort();
 					return tmp;
 				});
-		result.sort([](const std::vector<std::size_t>& a, const std::vector<std::size_t>& b){
+		result.sort([](const subspace_t& a, const subspace_t& b){
 					if (a.size() != b.size()) {
 						return a.size() < b.size();
 					} else {
-						for (std::size_t i = 0; i < a.size(); ++i) {
-							if (a[i] != b[i]) {
-								return a[i] < b[i];
+						auto iter1 = a.cbegin();
+						auto iter2 = b.cbegin();
+						while ((iter1 != a.cend()) && (iter2 != b.cend())) {
+							if (*iter1 != *iter2) {
+								return *iter1 < *iter2;
 							}
+
+							++iter1;
+							++iter2;
 						}
 						return true;
 					}
 				});
+
+		// post filter
+		tPhase.reset(new Tracer("postFilter", tMain));
+		std::cout << "Filter subspaces: " << std::flush;
+		if (cfgPostFilter > 0) {
+			decltype(result) tmp;
+			std::swap(result, tmp);
+			data_t entropyMin = std::numeric_limits<data_t>::infinity();
+			data_t entropyMax = 0;
+			std::size_t nDrops = 0;
+
+			std::vector<discretedim_t> dimVector;
+			std::transform(discreteDims.begin(), discreteDims.end(), std::back_inserter(dimVector), [](std::pair<discretedim_t, discretedim_t>& p) {
+					return p.first;
+					});
+
+			for (const auto& ss : tmp) {
+				data_t entropy = calcEntropy(ss, dimVector);
+				entropyMin = std::min(entropyMin, entropy);
+				entropyMax = std::max(entropyMax, entropy);
+
+				if (entropy > cfgPostFilter) {
+					result.push_back(ss);
+				} else {
+					++nDrops;
+				}
+
+				// progress
+				std::cout << "." << std::flush;
+			}
+
+			std::cout << "done (entropMin=" << entropyMin << ", entropyMax=" << entropyMax << ", dropped=" << nDrops << ")" << std::endl;
+		} else {
+			std::cout << "skipped" << std::endl;
+		}
 
 		// ok, so lets write the results
 		tPhase.reset(new Tracer("output", tMain));
