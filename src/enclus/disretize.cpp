@@ -45,7 +45,7 @@ std::vector<discretedim_t> discretize(const std::vector<datadim_t>& dims, std::s
 		data_t min;
 		data_t max;
 		std::tie(min, max) = detectRange(dim);
-		data_t step = (max - min) / static_cast<data_t>(xi);
+		data_t step = (max - min) / static_cast<data_t>(xi);  //xi stores number of parts each dimension divided into
 
 		// points => bins
 		auto dd = dbDiscrete->createDim<std::size_t>(dim->getName() + ".discrete");
